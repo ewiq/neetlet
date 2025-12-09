@@ -6,7 +6,6 @@
 	import { toastData } from '$lib/stores/toast.svelte';
 	import type { DBChannel } from '$lib/types/rss';
 	import { normalizeText } from '$lib/utils/searchUtils';
-	import { handleBlur, handleFocus } from '$lib/utils/uiUtils';
 	import { HashIcon, Rss, Search, X } from 'lucide-svelte';
 
 	let isDeleting = $state(false);
@@ -30,9 +29,7 @@
 		const params = new URLSearchParams();
 		params.set('feed', channel.title);
 
-		await goto(`?${params.toString()}`, {
-			noScroll: true
-		});
+		await goto(`?${params.toString()}`, {});
 
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -42,7 +39,6 @@
 	}
 
 	async function handleUnsubscribe(channelId: string, event: Event) {
-		// Prevent clicking the parent button
 		event.stopPropagation();
 
 		if (!confirm('Are you sure you want to remove this channel?')) return;
@@ -70,13 +66,12 @@
 	});
 </script>
 
-<div class="flex h-full grow-0 flex-col">
-	<div class="space-between mb-1 flex items-center gap-2 text-base font-semibold text-content">
+<div class="flex h-full flex-col">
+	<div class="space-between mb-2 flex items-center gap-2 text-base font-semibold text-content">
 		<div class="flex shrink-0 items-center gap-2">
 			<div class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary">
 				<Rss size={20} class="text-primary" />
 			</div>
-			<span>My subscriptions</span>
 		</div>
 
 		<div class="relative ml-2 flex-1">
@@ -87,8 +82,6 @@
 			<input
 				type="text"
 				bind:value={filterText}
-				onfocus={handleFocus}
-				onblur={handleBlur}
 				class="p w-full rounded-lg border border-muted bg-background py-2 pr-8 pl-8
                    text-sm font-light text-content placeholder:text-tertiary
                    focus:ring-2 focus:ring-primary focus:outline-none"
@@ -106,8 +99,10 @@
 			{/if}
 		</div>
 	</div>
+
 	<div class="border-t border-muted"></div>
-	<div class="flex max-h-60 flex-col overflow-y-auto">
+
+	<div class="flex flex-col overflow-y-auto">
 		{#each filteredChannels as channel}
 			<div class="group flex items-center">
 				<button
@@ -115,13 +110,13 @@
 					class="flex min-w-0 grow items-center gap-2 rounded-md py-0.5 text-left text-sm text-content transition-colors group-hover:text-tertiary hover:bg-secondary hover:text-content"
 				>
 					<div
-						class="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-tertiary/20 text-tertiary"
+						class="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-white text-tertiary group-hover:opacity-50"
 					>
 						{#if channel.image}
 							<img
 								src={channel.image}
 								alt={channel.title}
-								class="h-full w-full rounded object-cover"
+								class=" h-full w-full scale-75 rounded object-cover"
 							/>
 						{:else}
 							<HashIcon size={14} />
@@ -129,14 +124,14 @@
 					</div>
 
 					<span class="block min-w-0 truncate">
-						{channel.title || 'Untitled channel'}
+						{channel.title}
 					</span>
 				</button>
 
 				<button
 					onclick={(e) => handleUnsubscribe(channel.link, e)}
 					disabled={isDeleting}
-					class=" ml-1 flex shrink-0 items-center justify-center rounded p-1.5 text-accent transition hover:text-tertiary"
+					class="group ml-1 flex shrink-0 items-center justify-center rounded p-1.5 text-accent transition hover:text-tertiary"
 					aria-label="Unsubscribe"
 				>
 					<X size={20} />

@@ -40,13 +40,8 @@
 		</div>
 	</div>
 	{#if item.image}
-		<div class="w-full flex-1 overflow-hidden bg-muted/40">
-			<img
-				src={item.image}
-				alt={item.title}
-				class="h-full w-full object-cover transition duration-500"
-				loading="lazy"
-			/>
+		<div class="flex h-full w-full flex-1 items-center justify-center overflow-hidden bg-muted/40">
+			<img src={item.image} alt={item.title} class="h-full w-full object-cover" loading="lazy" />
 		</div>
 	{/if}
 	<div class="shrink-0 px-5 py-2">

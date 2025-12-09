@@ -37,9 +37,12 @@
 		class="fixed right-4 bottom-4 z-1000 flex h-16 max-w-md min-w-[300px] items-center gap-3 rounded-lg border bg-background p-4 shadow-lg select-none"
 		class:border-green-800={type === 'success'}
 		class:border-red-800={type === 'error'}
+		class:border-primary={type === 'info'}
 	>
 		{#if type === 'success'}
-			<CircleCheck class="h-5 w-5 shrink-0 text-green-900" />
+			<CircleCheck class="h-5 w-5 shrink-0 text-green-800" />
+		{:else if type === 'info'}
+			<CircleCheck class="h-5 w-5 shrink-0 text-primary" />
 		{:else}
 			<CircleX class="h-5 w-5 shrink-0 text-red-800" />
 		{/if}

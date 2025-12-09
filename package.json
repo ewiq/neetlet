@@ -49,9 +49,11 @@
 		"wrangler": "^4.52.1"
 	},
 	"dependencies": {
+		"@gonetone/get-youtube-id-by-url": "^2.0.0",
 		"fast-xml-parser": "^5.3.2",
 		"html-to-text": "^9.0.5",
 		"idb": "^8.0.3",
-		"lucide-svelte": "^0.555.0"
+		"lucide-svelte": "^0.555.0",
+		"node-html-parser": "^7.0.1"
 	}
 }

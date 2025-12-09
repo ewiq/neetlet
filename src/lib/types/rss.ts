@@ -10,6 +10,17 @@ export interface NormalizedRSSChannel {
 	image?: string;
 }
 
+export interface YouTubeMetadata {
+	videoId: string;
+	channelId: string;
+	isShort: boolean;
+	thumbnails: {
+		default?: string;
+		medium?: string;
+		high?: string;
+	};
+}
+
 export interface NormalizedRSSItem {
 	title: string;
 	description: string;
@@ -19,6 +30,9 @@ export interface NormalizedRSSItem {
 	category?: string | string[];
 	image?: string;
 	guid?: string;
+	// New fields for Frontend discrimination
+	type: 'article' | 'video' | 'short';
+	youtube?: YouTubeMetadata;
 }
 
 export interface NormalizedRSSFeed {
@@ -30,6 +44,7 @@ export interface NormalizedRSSFeed {
 export interface RSSFeedSuccessResponse {
 	success: true;
 	data: NormalizedRSSFeed;
+	sourceUrl?: string;
 }
 
 export interface RSSFeedErrorResponse {

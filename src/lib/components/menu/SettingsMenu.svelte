@@ -1,22 +1,44 @@
 <script lang="ts">
 	import { Settings, Moon, Sun, MoveVertical, Magnet, Hourglass, Shuffle } from 'lucide-svelte';
 	import ToggleButton from './ToggleButton.svelte';
-
-	import {
-		settings,
-		toggleDarkMode,
-		toggleFont,
-		toggleScrollSnap
-	} from '$lib/stores/settings.svelte';
-
+	import { initializeSettings, settings } from '$lib/stores/settings.svelte';
 	let { isDark, isFontSerif, isSnapped } = $props();
 
-	//Dummy for the moment
-	let isChronolicalSorting = $state(false);
+	$effect(() => {
+		initializeSettings();
+	});
 
-	function toggleSorting() {
-		isChronolicalSorting = !isChronolicalSorting;
-	}
+	const settingsConfig = $derived([
+		{
+			id: 'theme',
+			icon: isDark ? Moon : Sun,
+			label: isDark ? 'Dark' : 'Light',
+			isChecked: isDark,
+			onToggle: () => settings.toggleDarkMode()
+		},
+		{
+			id: 'font',
+			icon: null, // Custom rendering
+			label: isFontSerif ? 'Serif' : 'Sans serif',
+			isChecked: isFontSerif,
+			onToggle: () => settings.toggleFont(),
+			customIcon: true
+		},
+		{
+			id: 'scroll',
+			icon: isSnapped ? Magnet : MoveVertical,
+			label: isSnapped ? 'Snap scroll' : 'Free scroll',
+			isChecked: isSnapped,
+			onToggle: () => settings.toggleScrollSnap()
+		},
+		{
+			id: 'shuffle',
+			icon: settings.isShuffled ? Shuffle : Hourglass,
+			label: settings.isShuffled ? 'Shuffle feed' : 'Chronological',
+			isChecked: settings.isShuffled,
+			onToggle: () => settings.toggleShuffle()
+		}
+	]);
 </script>
 
 <div class="space-y-2">
@@ -26,55 +48,22 @@
 		</div>
 		<span>Settings</span>
 	</div>
-	<!-- LIGHT-DARK TOGGLE -->
-	<div class="flex w-full items-center justify-between rounded-lg px-3">
-		<div class="flex items-center gap-2 text-sm text-content">
-			{#if isDark}
-				<Moon size={16} />
-				<span>Dark</span>
-			{:else}
-				<Sun size={16} />
-				<span>Light</span>
-			{/if}
-		</div>
 
-		<ToggleButton isChecked={isDark} onToggle={toggleDarkMode}></ToggleButton>
-	</div>
-	<!-- FONT TOGGLE -->
-	<div class="mt-1 flex w-full items-center justify-between rounded-lg px-3">
-		<div class="flex items-center gap-2 text-sm text-content">
-			<span class="select-none {isFontSerif ? 'font-serif' : 'font-sans'} text-lg">A</span>
-			<span>{isFontSerif ? 'Serif' : 'Sans serif'}</span>
-		</div>
+	{#each settingsConfig as setting (setting.id)}
+		<div
+			class="flex w-full items-center justify-between rounded-lg px-3"
+			class:mt-1={setting.id === 'font'}
+		>
+			<div class="flex items-center gap-2 text-sm text-content">
+				{#if setting.customIcon}
+					<span class="select-none {isFontSerif ? 'font-serif' : 'font-sans'} text-lg">A</span>
+				{:else}
+					<setting.icon size={16} />
+				{/if}
+				<span>{setting.label}</span>
+			</div>
 
-		<ToggleButton isChecked={isFontSerif} onToggle={toggleFont}></ToggleButton>
-	</div>
-	<!-- SCROLL SNAP TOGGLE -->
-	<div class="flex w-full items-center justify-between rounded-lg px-3">
-		<div class="flex items-center gap-2 text-sm text-content">
-			{#if isSnapped}
-				<Magnet size={16} />
-				<span>Snap scroll</span>
-			{:else}
-				<MoveVertical size={16} />
-				<span>Free scroll</span>
-			{/if}
+			<ToggleButton isChecked={setting.isChecked} onToggle={setting.onToggle}></ToggleButton>
 		</div>
-
-		<ToggleButton isChecked={isSnapped} onToggle={toggleScrollSnap}></ToggleButton>
-	</div>
-	<!-- FEED SORTING TOGGLE -->
-	<div class="flex w-full items-center justify-between rounded-lg px-3 text-sm">
-		<div class="flex items-center gap-2 text-content">
-			{#if isChronolicalSorting}
-				<Hourglass size={16} />
-				<span>Chronological</span>
-			{:else}
-				<Shuffle size={16} />
-				<span>Shuffle feed</span>
-			{/if}
-		</div>
-
-		<ToggleButton isChecked={isChronolicalSorting} onToggle={toggleSorting}></ToggleButton>
-	</div>
+	{/each}
 </div>

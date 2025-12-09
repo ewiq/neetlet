@@ -1,43 +1,46 @@
 import { menuState } from '$lib/stores/menu.svelte';
 import { searchbarState } from '$lib/stores/searchbar.svelte';
+import { settings } from '$lib/stores/settings.svelte';
 
-export function createClickOutsideHandler(
-	elements: Array<HTMLElement | undefined>,
-	callback: () => void,
-	exceptions: Array<HTMLElement | null> = []
-) {
-	const handleClick = (event: MouseEvent) => {
-		const target = event.target as Node;
-		const isToastClick = (target as HTMLElement).closest('[data-toast]');
-
-		if (isToastClick) return;
-
-		// Check if click is outside all specified elements
-		const isOutside = elements.every((element) => element && !element.contains(target));
-
-		// Check if click is not on exception elements
-		const isException = exceptions.some((element) => element && element.contains(target));
-
-		if (isOutside && !isException) {
-			callback();
-		}
-	};
-
-	return {
-		handleClick,
-		attach: () => document.addEventListener('click', handleClick),
-		detach: () => document.removeEventListener('click', handleClick)
-	};
-}
+let lastScrollY = 0;
 
 export function handleScroll() {
 	const currentScrollY = window.scrollY;
-	if (currentScrollY > 0 && currentScrollY > 50) {
-		menuState.isMenuHidden = true;
-		menuState.isSettingsMenuOpen = false;
-	} else {
+
+	// Ignore invalid scroll values
+	if (currentScrollY < 0) return;
+
+	// Mobile
+	if (settings.isMobile) {
+		if (currentScrollY <= 50) {
+			menuState.isMenuHidden = false;
+		} else {
+			menuState.isMenuHidden = true;
+			menuState.isSettingsMenuOpen = false;
+		}
+		lastScrollY = currentScrollY;
+		return;
+	}
+
+	// Desktop
+	const scrollDelta = currentScrollY - lastScrollY;
+
+	if (Math.abs(scrollDelta) > 10) {
+		if (scrollDelta > 0) {
+			if (currentScrollY > 50) {
+				menuState.isMenuHidden = true;
+				menuState.isSettingsMenuOpen = false;
+			}
+		} else {
+			menuState.isMenuHidden = false;
+		}
+	}
+
+	if (currentScrollY <= 50) {
 		menuState.isMenuHidden = false;
 	}
+
+	lastScrollY = currentScrollY;
 }
 
 export function handleKeydown(e: KeyboardEvent) {

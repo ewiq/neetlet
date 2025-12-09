@@ -24,14 +24,6 @@ export function unlockScroll() {
 	document.body.style.touchAction = '';
 }
 
-export function handleFocus() {
-	if (settings.isMobile) lockScroll();
-}
-
-export function handleBlur() {
-	unlockScroll();
-}
-
 export function extractDomain(url: string): string {
 	try {
 		const urlObj = new URL(url);

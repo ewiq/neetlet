@@ -3,28 +3,32 @@ export const settings = $state({
 	isFontSerif: false,
 	isSnapped: false,
 	isMobile: false,
-	isScrollLocked: false
+	isScrollLocked: false,
+	isShuffled: true,
+
+	toggleDarkMode() {
+		this.isDark = !this.isDark;
+		persistSettings();
+	},
+	toggleFont() {
+		this.isFontSerif = !this.isFontSerif;
+		persistSettings();
+	},
+	toggleScrollSnap() {
+		this.isSnapped = !this.isSnapped;
+		persistSettings();
+	},
+	toggleShuffle() {
+		this.isShuffled = !this.isShuffled;
+		persistSettings();
+	}
 });
-
-export function toggleDarkMode() {
-	settings.isDark = !settings.isDark;
-	persistSettings();
-}
-
-export function toggleFont() {
-	settings.isFontSerif = !settings.isFontSerif;
-	persistSettings();
-}
-
-export function toggleScrollSnap() {
-	settings.isSnapped = !settings.isSnapped;
-	persistSettings();
-}
 
 export function initializeSettings() {
 	const savedTheme = localStorage.getItem('theme');
 	const savedFont = localStorage.getItem('font');
 	const savedScrollSnap = localStorage.getItem('scrollSnap');
+	const savedShuffleType = localStorage.getItem('isShuffled');
 
 	if (savedTheme) {
 		settings.isDark = savedTheme === 'dark';
@@ -38,6 +42,10 @@ export function initializeSettings() {
 
 	if (savedScrollSnap === 'true') {
 		settings.isSnapped = true;
+	}
+
+	if (savedShuffleType === 'true') {
+		settings.isShuffled = true;
 	}
 
 	applySettings();
@@ -64,11 +72,19 @@ function applySettings() {
 	} else {
 		document.documentElement.classList.remove('snap-y', 'snap-mandatory', 'scroll-smooth');
 	}
+
+	// Apply shuffle
+	if (settings.isShuffled) {
+		// TODO: Apply random shuffle
+	} else {
+		// TODO: Apply chronological shuffle
+	}
 }
 
 function persistSettings() {
 	localStorage.setItem('theme', settings.isDark ? 'dark' : 'light');
 	localStorage.setItem('font', settings.isFontSerif ? 'serif' : 'sans');
 	localStorage.setItem('scrollSnap', settings.isSnapped ? 'true' : 'false');
+	localStorage.setItem('isShuffled', settings.isShuffled ? 'true' : 'false');
 	applySettings();
 }

@@ -2,16 +2,21 @@
 	import { Search, X, ChevronRight } from 'lucide-svelte';
 	import { fly } from 'svelte/transition';
 	import { settings } from '$lib/stores/settings.svelte';
+	import { menuState } from '$lib/stores/menu.svelte';
 	import SearchButton from './SearchButton.svelte';
-	import { handleBlur, handleFocus } from '$lib/utils/uiUtils';
 	import { searchbarState } from '$lib/stores/searchbar.svelte';
+	import { goto } from '$app/navigation';
 
-	let { value = $bindable(), onSearch } = $props<{
-		value: string;
-		onSearch?: () => void;
+	let { initialValue = '' } = $props<{
+		initialValue?: string;
 	}>();
 
+	let value = $state('');
 	let inputRef: HTMLInputElement | undefined = $state();
+
+	$effect(() => {
+		value = initialValue;
+	});
 
 	$effect(() => {
 		if (!settings.isMobile && searchbarState.isSearchbarOpen && inputRef) {
@@ -26,9 +31,24 @@
 		}
 	}
 
-	function handleSubmit(e: Event) {
+	async function handleSubmit(e: Event) {
 		e.preventDefault();
-		onSearch?.();
+
+		const params = new URLSearchParams();
+		if (value.trim()) {
+			params.set('q', value.trim());
+		}
+
+		await goto(`?${params.toString()}`, {
+			keepFocus: true
+		});
+
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+
+		if (settings.isMobile) {
+			menuState.isSubsMenuOpen = false;
+		}
+
 		setTimeout(() => inputRef?.blur(), 100);
 	}
 </script>
@@ -50,7 +70,7 @@
 				class="cursor-pointer rounded-full p-2 text-accent transition-colors hover:text-tertiary"
 				aria-label="Close search"
 			>
-				<X class="h-5 w-5 " />
+				<X class="h-5 w-5" />
 			</button>
 			<form onsubmit={handleSubmit} class="relative flex-1">
 				<div class="relative">
@@ -59,8 +79,6 @@
 					</div>
 					<input
 						bind:this={inputRef}
-						onfocus={handleFocus}
-						onblur={handleBlur}
 						type="text"
 						bind:value
 						placeholder="Search..."
@@ -84,9 +102,9 @@
 			<button
 				onclick={handleSubmit}
 				class="cursor-pointer rounded-full p-2 text-accent transition-colors hover:text-tertiary"
-				aria-label="Close search"
+				aria-label="Submit search"
 			>
-				<ChevronRight class="h-5 w-5 " />
+				<ChevronRight class="h-5 w-5" />
 			</button>
 		</div>
 	</div>

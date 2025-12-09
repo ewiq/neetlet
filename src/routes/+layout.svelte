@@ -4,10 +4,10 @@
 	import Toast from '$lib/components/menu/Toast.svelte';
 	import Menu from '$lib/components/menu/Menu.svelte';
 	import { toastData } from '$lib/stores/toast.svelte';
-	import { invalidate } from '$app/navigation';
+	import { beforeNavigate, invalidate } from '$app/navigation';
 	import { settings } from '$lib/stores/settings.svelte';
 	import { menuState } from '$lib/stores/menu.svelte';
-	import { trackDeviceState } from '$lib/utils/uiUtils';
+	import { lockScroll, trackDeviceState, unlockScroll } from '$lib/utils/uiUtils';
 	import { handleKeydown, handleScroll } from '$lib/utils/domUtils';
 
 	async function handleNewSubscription() {
@@ -22,36 +22,23 @@
 
 		window.addEventListener('scroll', handleScroll, { passive: true });
 
-		// Handle escape key
-		const handleEscape = (event: KeyboardEvent) => {
-			if ((menuState.isSettingsMenuOpen || menuState.isSubsMenuOpen) && event.key === 'Escape') {
-				menuState.closeAllMenus();
-			}
-		};
-
-		document.addEventListener('keydown', handleEscape);
-
 		return () => {
 			cleanup();
 			window.removeEventListener('scroll', handleScroll);
-			document.removeEventListener('keydown', handleKeydown);
 		};
 	});
 
-	// No scroll while subs menu is open
 	$effect(() => {
 		if (settings.isMobile && menuState.isSubsMenuOpen) {
-			document.body.style.overflow = 'hidden';
-			document.body.style.touchAction = 'none';
+			lockScroll();
+
 			menuState.isMenuHidden = false;
 		} else {
-			document.body.style.overflow = '';
-			document.body.style.touchAction = '';
+			unlockScroll();
 		}
 
 		return () => {
-			document.body.style.overflow = '';
-			document.body.style.touchAction = '';
+			unlockScroll();
 		};
 	});
 </script>

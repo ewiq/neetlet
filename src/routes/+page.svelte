@@ -4,17 +4,33 @@
 	import { LoaderCircle, Search } from 'lucide-svelte';
 	import type { UIItem } from '$lib/types/rss';
 	import { searchItem } from '$lib/utils/searchUtils';
-	import { goto } from '$app/navigation';
 	import { slide } from 'svelte/transition';
 	import type { PageData } from './$types';
 	import { page } from '$app/state';
-	import { settings } from '$lib/stores/settings.svelte';
-	import { menuState } from '$lib/stores/menu.svelte';
+	import { afterNavigate, beforeNavigate } from '$app/navigation';
+
+	beforeNavigate(({ type, cancel }) => {
+		if (type === 'popstate') {
+			const SCROLL_THRESHOLD = 300;
+
+			if (window.scrollY > SCROLL_THRESHOLD) {
+				cancel();
+
+				window.scrollTo({
+					top: 0,
+					behavior: 'smooth'
+				});
+			}
+		}
+	});
+
+	afterNavigate(() => {
+		window.scrollTo({ top: 0, behavior: 'instant' });
+	});
 
 	let { data }: { data: PageData } = $props();
 
 	let visibleItems: UIItem[] = $state([]);
-	let searchInput = $derived(data.searchQuery);
 	let itemsPerPage = 10;
 	let loadTrigger: HTMLElement | undefined = $state();
 
@@ -24,21 +40,15 @@
 		if (data.searchQuery.trim()) {
 			return data.items.filter((item) => searchItem(item, data.searchQuery));
 		}
-
 		if (feedFilter) {
 			return data.items.filter((item) => item.channelTitle === feedFilter);
 		}
-
 		return data.items;
 	});
 
 	$effect(() => {
+		const _ = filteredItems;
 		visibleItems = filteredItems.slice(0, itemsPerPage);
-	});
-
-	// Sync search input with URL
-	$effect(() => {
-		searchInput = data.searchQuery;
 	});
 
 	$effect(() => {
@@ -47,7 +57,6 @@
 		const observer = new IntersectionObserver(
 			(entries) => {
 				if (entries[0].isIntersecting && visibleItems.length < filteredItems.length) {
-					// Artificial delay for increased perceived performance :-)
 					setTimeout(() => {
 						const nextBatch = filteredItems.slice(
 							visibleItems.length,
@@ -57,7 +66,7 @@
 					}, 300);
 				}
 			},
-			{ rootMargin: '0px' }
+			{ rootMargin: '100px' } // Increased margin slightly for smoother loading before hitting bottom
 		);
 
 		observer.observe(loadTrigger);
@@ -67,30 +76,8 @@
 		};
 	});
 
-	async function handleSearch() {
-		const params = new URLSearchParams();
-		if (searchInput.trim()) {
-			params.set('q', searchInput.trim());
-		}
-
-		await goto(`?${params.toString()}`, {
-			keepFocus: true,
-			noScroll: true
-		});
-
+	function handleClearSearch() {
 		window.scrollTo({ top: 0, behavior: 'smooth' });
-
-		if (settings.isMobile) {
-			menuState.isSubsMenuOpen = false;
-		}
-	}
-
-	async function clearSearch() {
-		searchInput = '';
-		await goto('?', {
-			keepFocus: true,
-			noScroll: true
-		});
 	}
 </script>
 
@@ -112,13 +99,15 @@
 							results for <span class="font-medium text-content">{feedFilter}</span>
 						{/if}
 					</p>
+
 					{#if filteredItems.length !== 0}
-						<button
-							onclick={clearSearch}
+						<a
+							href="?"
+							onclick={handleClearSearch}
 							class="shrink-0 cursor-pointer text-sm text-primary hover:underline"
 						>
 							Clear search
-						</button>
+						</a>
 					{/if}
 				</div>
 			</div>
@@ -129,9 +118,13 @@
 					<p class="text-lg text-content">
 						No results found for "{data.searchQuery || feedFilter}"
 					</p>
-					<button onclick={clearSearch} class="mt-2 cursor-pointer text-primary hover:underline">
+					<a
+						href="?"
+						onclick={handleClearSearch}
+						class="mt-2 cursor-pointer text-primary hover:underline"
+					>
 						Clear search
-					</button>
+					</a>
 				</div>
 			{/if}
 		{/if}
@@ -154,4 +147,4 @@
 	{/if}
 </main>
 
-<Searchbar bind:value={searchInput} onSearch={handleSearch} />
+<Searchbar initialValue={data.searchQuery} />
