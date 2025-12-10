@@ -6,10 +6,7 @@ export function formatDateTime(date: Date) {
 	return { year, month, hours, minutes };
 }
 
-export function timeAgo(dateString: string | undefined) {
-	if (!dateString) return '';
-	const date = new Date(dateString);
-	const now = new Date();
+export function timeAgo(date: Date, now: Date) {
 	const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 	if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
 	if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;

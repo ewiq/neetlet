@@ -4,9 +4,7 @@
 	import { initializeSettings, settings } from '$lib/stores/settings.svelte';
 	let { isDark, isFontSerif, isSnapped } = $props();
 
-	$effect(() => {
-		initializeSettings();
-	});
+	$effect(() => {});
 
 	const settingsConfig = $derived([
 		{

@@ -21,7 +21,7 @@ export async function getDB(): Promise<IDBPDatabase<RSSDatabase>> {
 	});
 }
 
-export async function saveFeedToDB(feed: NormalizedRSSFeed) {
+export async function saveFeedToDB(feed: NormalizedRSSFeed, sourceUrl: string) {
 	const db = await getDB();
 	const tx = db.transaction(['channels', 'items'], 'readwrite');
 	const channelStore = tx.objectStore('channels');
@@ -32,7 +32,8 @@ export async function saveFeedToDB(feed: NormalizedRSSFeed) {
 	// --- Save Channel ---
 	const channelData: DBChannel = {
 		...feed.data,
-		savedAt: timestamp
+		savedAt: timestamp,
+		feedUrl: sourceUrl
 	};
 
 	await channelStore.put(channelData);

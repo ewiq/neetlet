@@ -1,4 +1,9 @@
-import type { NormalizedRSSFeed, NormalizedRSSItem } from '$lib/types/rss';
+import type {
+	NormalizedRSSFeed,
+	NormalizedRSSItem,
+	RSSFeedResponse,
+	SubscribeRequestBody
+} from '$lib/types/rss';
 import {
 	extractYouTubeChannelId,
 	getYouTubeRSSUrl,
@@ -24,7 +29,6 @@ function extractDomain(url: string): string {
 
 		if (hostname.startsWith('www.')) {
 			hostname = hostname.substring(4);
-			console.log(hostname);
 		}
 
 		return 'https://www.' + hostname;
@@ -92,8 +96,6 @@ function validateContentType(contentType: string | null): { valid: boolean; erro
 	return { valid: true };
 }
 
-// --- Image Extraction Logic (Preserved as requested) ---
-
 function extractImageUrl(imageData: any): string | undefined {
 	if (!imageData) return undefined;
 	if (typeof imageData === 'string') return imageData;
@@ -135,7 +137,6 @@ function extractImageFromItem(item: any): string | undefined {
 }
 
 // --- Main Normalizer (Standard RSS/Atom) ---
-
 function normalizeRSSFeed(parsedData: any): NormalizedRSSFeed {
 	// RSS 2.0
 	if (parsedData.rss?.channel) {
@@ -235,44 +236,28 @@ function normalizeRSSFeed(parsedData: any): NormalizedRSSFeed {
 	};
 }
 
-// --- Handler ---
-
-export const POST: RequestHandler = async ({ request }) => {
+// --- Helper: Process a Single Feed ---
+async function processSingleFeed(inputUrl: string): Promise<RSSFeedResponse> {
 	try {
-		let { url } = await request.json();
+		let url = inputUrl;
 
-		if (!url) return json({ success: false, error: 'URL is required' }, { status: 400 });
-		if (!isValidUrl(url))
-			return json({ success: false, error: 'Invalid URL format.' }, { status: 400 });
-
-		// Handle YouTube
+		// YouTube Handling
 		if (isYouTubeUrl(url)) {
 			if (isYouTubeChannelUrl(url)) {
 				try {
 					const channelId = await extractYouTubeChannelId(url);
-					if (!channelId)
-						return json(
-							{ success: false, error: 'Could not extract YouTube channel ID' },
-							{ status: 400 }
-						);
+					if (!channelId) throw new Error('Could not extract YouTube channel ID');
 					url = getYouTubeRSSUrl(channelId);
 				} catch (error: any) {
-					console.error('Error extracting YouTube ID:', error);
-					return json(
-						{ success: false, error: `Failed to process YouTube URL: ${error.message}` },
-						{ status: 400 }
-					);
+					return { success: false, error: error.message };
 				}
 			} else if (!url.includes('feeds/videos.xml')) {
-				return json(
-					{ success: false, error: 'Please provide a YouTube channel URL or RSS feed URL' },
-					{ status: 400 }
-				);
+				return { success: false, error: 'Invalid YouTube URL' };
 			}
 		}
 
 		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 10000);
+		const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout per feed
 
 		let response: Response;
 		try {
@@ -282,31 +267,20 @@ export const POST: RequestHandler = async ({ request }) => {
 			});
 		} catch (fetchError: any) {
 			clearTimeout(timeoutId);
-			if (fetchError.name === 'AbortError')
-				return json({ success: false, error: 'Request timeout' }, { status: 504 });
-			return json(
-				{ success: false, error: `Failed to fetch URL: ${fetchError.message}` },
-				{ status: 502 }
-			);
+			return { success: false, error: fetchError.message };
 		}
 		clearTimeout(timeoutId);
 
-		if (!response.ok)
-			return json(
-				{ success: false, error: `Failed to fetch: ${response.status} ${response.statusText}` },
-				{ status: response.status }
-			);
-
-		const contentTypeValidation = validateContentType(response.headers.get('content-type'));
-		if (!contentTypeValidation.valid)
-			return json({ success: false, error: contentTypeValidation.error }, { status: 400 });
+		if (!response.ok) {
+			return { success: false, error: `HTTP ${response.status}` };
+		}
 
 		const xmlText = await response.text();
-		if (!xmlText || xmlText.trim().length === 0)
-			return json({ success: false, error: 'RSS feed empty' }, { status: 400 });
-		if (!isValidXML(xmlText))
-			return json({ success: false, error: 'Invalid XML format' }, { status: 400 });
+		if (!isValidXML(xmlText)) {
+			return { success: false, error: 'Invalid XML' };
+		}
 
+		// --- Parsing Configuration ---
 		const parser = new XMLParser({
 			ignoreAttributes: false,
 			attributeNamePrefix: '@_',
@@ -333,63 +307,71 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		});
 
-		let parsedResult: any;
+		let parsedResult;
 		try {
 			parsedResult = parser.parse(xmlText);
-		} catch (parseError: any) {
-			return json(
-				{ success: false, error: `XML parsing failed: ${parseError.message}` },
-				{ status: 400 }
-			);
+		} catch (e: any) {
+			return { success: false, error: 'Parse Error' };
 		}
 
 		let normalizedFeed: NormalizedRSSFeed;
+
 		if (url.includes('youtube.com/feeds/videos.xml')) {
+			// Wrap in try/catch for specific normalization errors
 			try {
 				normalizedFeed = normalizeYouTubeFeed(parsedResult);
-			} catch (error: any) {
-				return json(
-					{ success: false, error: `Failed to parse YouTube feed: ${error.message}` },
-					{ status: 400 }
-				);
+			} catch (e: any) {
+				return { success: false, error: e.message };
 			}
 		} else {
-			const structureValidation = isValidRSSStructure(parsedResult);
-			if (!structureValidation.valid)
-				return json({ success: false, error: structureValidation.error }, { status: 400 });
+			const structure = isValidRSSStructure(parsedResult);
+			if (!structure.valid)
+				return { success: false, error: structure.error || 'Invalid Structure' };
 			normalizedFeed = normalizeRSSFeed(parsedResult);
 		}
 
-		// Image fallback
+		// Image fallback logic
 		if (!normalizedFeed.data.image && normalizedFeed.data.link) {
 			try {
 				const websiteUrl = extractDomain(normalizedFeed.data.link);
 				const fallbackIcon = await fetchWebpageIcon(websiteUrl);
-				if (fallbackIcon) {
-					normalizedFeed.data.image = fallbackIcon;
-				}
-			} catch (iconError) {
-				console.warn('Icon fallback fetch failed', iconError);
-			}
+				if (fallbackIcon) normalizedFeed.data.image = fallbackIcon;
+			} catch {}
 		}
 
-		if (!normalizedFeed.data.title && !normalizedFeed.data.link) {
-			return json({ success: false, error: 'Feed missing minimum data' }, { status: 400 });
-		}
-
-		return json({
+		return {
 			success: true,
 			data: normalizedFeed,
-			sourceUrl: url
-		});
-	} catch (error) {
-		console.error('Error processing RSS feed:', error);
-		return json(
-			{
-				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error'
-			},
-			{ status: 500 }
-		);
+			sourceUrl: inputUrl,
+			feedUrl: url
+		};
+	} catch (error: any) {
+		return { success: false, error: error.message || 'Unknown Error' };
 	}
+}
+
+// --- Handler ---
+export const POST: RequestHandler = async ({ request }) => {
+	const body = (await request.json()) as SubscribeRequestBody;
+
+	// CASE 1: Batch Processing (Array of URLs)
+	if (body.urls && Array.isArray(body.urls)) {
+		const urls = body.urls as string[];
+
+		// Later: Limit batch size if necessary (e.g. max 20 at a time)
+		const results = await Promise.all(urls.map((url) => processSingleFeed(url)));
+
+		return json({ results });
+	}
+
+	// CASE 2: Single URL
+	if (body.url) {
+		const result = await processSingleFeed(body.url);
+		if (!result.success) {
+			return json(result, { status: 400 });
+		}
+		return json(result);
+	}
+
+	return json({ success: false, error: 'Missing url or urls parameter' }, { status: 400 });
 };

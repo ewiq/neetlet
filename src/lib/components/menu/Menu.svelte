@@ -81,7 +81,7 @@
 				<div
 					bind:this={subsDropdownRef}
 					class="fixed top-0 left-0 z-60 mt-15 w-screen border-t border-muted bg-surface px-4 py-2 shadow-lg transition-[height] duration-300 md:w-84"
-					style="height: {menuState.isMenuHidden ? '100dvh' : 'calc(100dvh - 3.75rem)'};"
+					style="height: {menuState.isMenuHidden ? '100vh' : 'calc(100vh - 3.75rem)'};"
 					role="menu"
 				>
 					<MenuSubscriptions onSubscribe={handleNewSubscription} />

@@ -41,7 +41,7 @@
 				}
 
 				try {
-					await saveFeedToDB(result.data);
+					await saveFeedToDB(result.data, result.feedUrl);
 					console.log('Feed saved to IDB');
 				} catch (dbError) {
 					((toastData.message = 'Failed to save to DB:'), dbError);

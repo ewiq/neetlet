@@ -15,6 +15,7 @@
 		Search,
 		X
 	} from 'lucide-svelte';
+	import { slide } from 'svelte/transition';
 
 	let isDeleting = $state(false);
 	let filterText = $state('');
@@ -145,8 +146,8 @@
 	<div class="border-t border-muted"></div>
 
 	<div class="flex flex-col overflow-y-auto">
-		{#each filteredChannels as channel}
-			<div class="group flex items-center">
+		{#each filteredChannels as channel (channel.title)}
+			<div class="group flex items-center" transition:slide={{ duration: 200 }}>
 				<button
 					onclick={() => filterByChannel(channel)}
 					class="flex min-w-0 grow items-center gap-2 rounded-md py-0.5 text-left text-sm text-content transition-colors group-hover:text-tertiary hover:bg-secondary hover:text-content"

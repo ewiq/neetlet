@@ -5,14 +5,66 @@
 	import Menu from '$lib/components/menu/Menu.svelte';
 	import { toastData } from '$lib/stores/toast.svelte';
 	import { invalidate } from '$app/navigation';
-	import { settings } from '$lib/stores/settings.svelte';
+	import { initializeSettings, settings } from '$lib/stores/settings.svelte';
 	import { menuState } from '$lib/stores/menu.svelte';
 	import { lockScroll, trackDeviceState, unlockScroll } from '$lib/utils/uiUtils';
 	import { searchbarState } from '$lib/stores/searchbar.svelte';
+	import { currentTime } from '$lib/stores/time.svelte';
+	import { syncAllFeeds } from '$lib/services/feedSync';
 
 	let { children } = $props();
-
 	let lastScrollY = 0;
+
+	// Configuration
+	const REFRESH_INTERVAL = 15 * 60 * 1000;
+	const INITIAL_SYNC_COOLDOWN = 5 * 60 * 1000;
+	const SYNC_KEY = 'leaklet-last-sync';
+
+	let isSyncing = $state(false);
+
+	async function performSync() {
+		if (isSyncing) return;
+		isSyncing = true;
+		try {
+			await syncAllFeeds();
+			localStorage.setItem(SYNC_KEY, Date.now().toString());
+			await invalidate('app:feed');
+		} catch (error) {
+			console.error('Auto-sync failed:', error);
+		} finally {
+			isSyncing = false;
+		}
+	}
+
+	$effect(() => {
+		let intervalId: ReturnType<typeof setInterval>;
+
+		const init = async () => {
+			const lastSync = parseInt(localStorage.getItem(SYNC_KEY) || '0');
+			const now = Date.now();
+			const timeSinceLast = now - lastSync;
+
+			if (timeSinceLast > INITIAL_SYNC_COOLDOWN) {
+				console.log('Doing initial feed refresh...');
+				await performSync();
+			} else {
+				console.log(
+					`Skipping initial refresh (Last sync: ${Math.round(timeSinceLast / 1000)}s ago)`
+				);
+			}
+
+			intervalId = setInterval(async () => {
+				console.log('Triggering periodic refresh...');
+				await performSync();
+			}, REFRESH_INTERVAL);
+		};
+
+		init();
+
+		return () => {
+			if (intervalId) clearInterval(intervalId);
+		};
+	});
 
 	function handleScroll() {
 		const currentScrollY = window.scrollY;
@@ -66,12 +118,23 @@
 		}
 	}
 
+	async function feedRefresh() {
+		await syncAllFeeds();
+		await invalidate('app:feed');
+	}
+
 	async function handleNewSubscription() {
 		await invalidate('app:feed');
 	}
 
 	$effect(() => {
-		// Initialize device tracking
+		const stop = currentTime.startUpdating();
+		initializeSettings();
+		return stop;
+	});
+
+	// Scroll tracking
+	$effect(() => {
 		const cleanup = trackDeviceState();
 
 		window.addEventListener('scroll', handleScroll, { passive: true });

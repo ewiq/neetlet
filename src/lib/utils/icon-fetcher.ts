@@ -3,7 +3,6 @@ import { parse } from 'node-html-parser';
 export async function fetchWebpageIcon(websiteUrl: string): Promise<string | undefined> {
 	if (!websiteUrl) return undefined;
 
-	console.log(websiteUrl);
 	try {
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), 5000);

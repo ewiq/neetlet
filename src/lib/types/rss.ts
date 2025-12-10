@@ -1,5 +1,10 @@
 import type { DBSchema } from 'idb';
 
+export interface SubscribeRequestBody {
+	url?: string;
+	urls?: string[];
+}
+
 export interface NormalizedRSSChannel {
 	title: string;
 	description: string;
@@ -44,7 +49,8 @@ export interface NormalizedRSSFeed {
 export interface RSSFeedSuccessResponse {
 	success: true;
 	data: NormalizedRSSFeed;
-	sourceUrl?: string;
+	sourceUrl: string;
+	feedUrl: string;
 }
 
 export interface RSSFeedErrorResponse {
@@ -56,6 +62,7 @@ export type RSSFeedResponse = RSSFeedSuccessResponse | RSSFeedErrorResponse;
 
 export interface DBChannel extends NormalizedRSSChannel {
 	savedAt: number;
+	feedUrl: string;
 }
 
 export interface DBItem extends NormalizedRSSItem {

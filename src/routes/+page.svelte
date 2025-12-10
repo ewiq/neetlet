@@ -7,7 +7,8 @@
 	import { slide } from 'svelte/transition';
 	import type { PageData } from './$types';
 	import { page } from '$app/state';
-	import { afterNavigate, beforeNavigate } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, invalidate } from '$app/navigation';
+	import { syncAllFeeds } from '$lib/services/feedSync';
 
 	beforeNavigate(({ type, cancel }) => {
 		if (type === 'popstate') {
@@ -33,7 +34,7 @@
 	let visibleItems: UIItem[] = $state([]);
 	let itemsPerPage = 10;
 	let loadTrigger: HTMLElement | undefined = $state();
-	let focusedIndex = $state(-1);
+	let focusedIndex = $state(0);
 	let isKeyboardScrolling = $state(false);
 
 	let feedFilter = $derived(page.url.searchParams.get('feed'));
@@ -93,7 +94,7 @@
 		} else if (e.key === 'k' || e.key === 'ArrowUp') {
 			e.preventDefault();
 			isKeyboardScrolling = true;
-			focusedIndex = Math.max(focusedIndex - 1, -1);
+			focusedIndex = Math.max(focusedIndex - 1, 0);
 		}
 	}
 

@@ -4,11 +4,11 @@
 	import { timeAgo } from '$lib/utils/dateUtils';
 	import { extractDomain } from '$lib/utils/uiUtils';
 	import { menuState } from '$lib/stores/menu.svelte';
+	import { currentTime } from '$lib/stores/time.svelte';
 
 	let {
 		item,
 		focused = false,
-		index = 0,
 		shouldScroll = false,
 		onVisible = () => {},
 		onScrollComplete = () => {}
@@ -21,6 +21,13 @@
 		onScrollComplete?: () => void;
 	} = $props();
 
+	let publishedDate = $derived.by(() => {
+		const date = new Date(item.pubDate);
+		if (isNaN(date.getTime())) {
+			return '';
+		}
+		return timeAgo(date, currentTime.value);
+	});
 	let feedCardElement: HTMLElement | undefined = $state();
 
 	let cleanDescription = $derived.by(() => {
@@ -80,7 +87,7 @@
 						<span class="line-clamp-1">{item.author}</span>
 						<span>·</span>
 					{/if}
-					<span>{timeAgo(item.pubDate)}</span>
+					<span>{publishedDate}</span>
 				</div>
 			</div>
 		</div>
