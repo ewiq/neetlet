@@ -15,6 +15,7 @@ export function trackDeviceState() {
 export function lockScroll() {
 	settings.isScrollLocked = true;
 	document.body.style.overflow = 'hidden';
+	// Scroll possible within list of subscriptions?
 	document.body.style.touchAction = 'none';
 }
 

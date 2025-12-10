@@ -67,6 +67,8 @@
 	});
 
 	function handleScroll() {
+		if (menuState.isSubsMenuOpen) return;
+
 		const currentScrollY = window.scrollY;
 
 		// Ignore invalid scroll values
@@ -116,11 +118,6 @@
 			menuState.closeAllMenus();
 			searchbarState.closeBar();
 		}
-	}
-
-	async function feedRefresh() {
-		await syncAllFeeds();
-		await invalidate('app:feed');
 	}
 
 	async function handleNewSubscription() {

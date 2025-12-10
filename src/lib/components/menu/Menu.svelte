@@ -1,25 +1,26 @@
 <script lang="ts">
 	import Logo from '$lib/assets/logo.png';
 	import MenuSettings from './SettingsMenu.svelte';
-	import MenuSubscriptions from './SubsMenu.svelte';
 	import { ChevronDown } from 'lucide-svelte';
 	import { settings } from '$lib/stores/settings.svelte';
 	import { menuState } from '$lib/stores/menu.svelte';
 	import SearchButton from '../searchbar/SearchButton.svelte';
-	import { slide } from 'svelte/transition';
 	import { formatDateTime } from '$lib/utils/dateUtils';
 	import { searchbarState } from '$lib/stores/searchbar.svelte';
+	import { currentTime } from '$lib/stores/time.svelte';
+	import SubsMenu from './SubsMenu.svelte';
 
 	let { handleNewSubscription } = $props();
 
-	let currentTime = $state(new Date());
 	let settingsBtnRef: HTMLButtonElement | undefined = $state();
 	let settingsDropdownRef: HTMLDivElement | undefined = $state();
 	let subsBtnRef: HTMLButtonElement | undefined = $state();
 	let subsDropdownRef: HTMLDivElement | undefined = $state();
 	let searchInputRef: HTMLInputElement | undefined = $state();
 
-	let dateTime = $derived(formatDateTime(currentTime));
+	let viewportHeight = $state(0);
+
+	let dateTime = $derived(formatDateTime(currentTime.value));
 
 	function handleClickOutside(e: MouseEvent) {
 		const target = e.target as Node;
@@ -37,17 +38,29 @@
 	}
 
 	$effect(() => {
-		// Update time every second
-		const timer = setInterval(() => {
-			currentTime = new Date();
-		}, 1000);
+		if (typeof window !== 'undefined' && window.visualViewport) {
+			const handleResize = () => {
+				viewportHeight = window.visualViewport?.height || window.innerHeight;
+			};
 
+			handleResize();
+
+			window.visualViewport.addEventListener('resize', handleResize);
+			window.visualViewport.addEventListener('scroll', handleResize);
+
+			return () => {
+				window.visualViewport?.removeEventListener('resize', handleResize);
+				window.visualViewport?.removeEventListener('scroll', handleResize);
+			};
+		}
+	});
+
+	$effect(() => {
 		if (menuState.isSettingsMenuOpen || menuState.isSubsMenuOpen) {
 			document.addEventListener('click', handleClickOutside);
 		}
 
 		return () => {
-			clearInterval(timer);
 			document.removeEventListener('click', handleClickOutside);
 		};
 	});
@@ -81,10 +94,12 @@
 				<div
 					bind:this={subsDropdownRef}
 					class="fixed top-0 left-0 z-60 mt-15 w-screen border-t border-muted bg-surface px-4 py-2 shadow-lg transition-[height] duration-300 md:w-84"
-					style="height: {menuState.isMenuHidden ? '100vh' : 'calc(100vh - 3.75rem)'};"
+					style="height: {menuState.isMenuHidden
+						? `${viewportHeight}px`
+						: `${viewportHeight - 60}px`};"
 					role="menu"
 				>
-					<MenuSubscriptions onSubscribe={handleNewSubscription} />
+					<SubsMenu onSubscribe={handleNewSubscription} />
 				</div>
 			{/if}
 		</div>

@@ -11,6 +11,13 @@
 
 	let subscriptionUrl = $state('');
 
+	function handleFocus(e: FocusEvent) {
+		setTimeout(() => {
+			const target = e.target as HTMLElement;
+			target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		}, 300);
+	}
+
 	async function subscribe() {
 		if (!subscriptionUrl.trim()) return;
 
@@ -84,6 +91,7 @@
 					type="text"
 					placeholder="https://example.com/rss"
 					bind:value={subscriptionUrl}
+					onfocus={handleFocus}
 					class="w-full rounded-lg border border-muted bg-background px-3 py-2 text-sm text-content placeholder:text-tertiary focus:ring-2 focus:ring-primary focus:outline-none"
 				/>
 			</div>
