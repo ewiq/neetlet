@@ -79,7 +79,7 @@
 	<div class="flex flex-col space-y-2">
 		<div class="border-t border-muted"></div>
 		<div class="mb-1 flex items-center gap-2 text-base text-content">
-			<div class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary">
+			<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-tertiary">
 				<Plus size={20} class="text-primary" />
 			</div>
 			<span>Add new sub</span>

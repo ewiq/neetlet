@@ -2,25 +2,21 @@
 	import FeedCard from '$lib/components/feed/FeedCard.svelte';
 	import Searchbar from '$lib/components/searchbar/Searchbar.svelte';
 	import { LoaderCircle, Search } from 'lucide-svelte';
-	import type { UIItem } from '$lib/types/rss';
 	import { searchItem } from '$lib/utils/searchUtils';
 	import { slide } from 'svelte/transition';
 	import type { PageData } from './$types';
 	import { page } from '$app/state';
 	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import { updateItem } from '$lib/db/db';
+	import { sync } from '$lib/stores/sync.svelte';
+	import { duration } from 'drizzle-orm/gel-core';
 
 	beforeNavigate(({ type, cancel }) => {
 		if (type === 'popstate') {
 			const SCROLL_THRESHOLD = 300;
-
 			if (window.scrollY > SCROLL_THRESHOLD) {
 				cancel();
-
-				window.scrollTo({
-					top: 0,
-					behavior: 'smooth'
-				});
+				window.scrollTo({ top: 0, behavior: 'smooth' });
 			}
 		}
 	});
@@ -29,10 +25,18 @@
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	});
 
-	let { data }: { data: PageData } = $props();
+	let { data }: { data: PageData; isSyncing: boolean } = $props();
 
-	let visibleItems: UIItem[] = $state([]);
+	let allItems = $state(data.items);
+
+	// 2. Keep local state in sync if data changes (e.g. navigation or search param reload)
+	$effect(() => {
+		allItems = data.items;
+	});
+
 	let itemsPerPage = 10;
+	let visibleCount = $state(itemsPerPage);
+
 	let loadTrigger: HTMLElement | undefined = $state();
 	let focusedIndex = $state(0);
 	let isKeyboardScrolling = $state(false);
@@ -41,18 +45,28 @@
 
 	let filteredItems = $derived.by(() => {
 		if (data.searchQuery.trim()) {
-			return data.items.filter((item) => searchItem(item, data.searchQuery));
+			return allItems.filter((item) => searchItem(item, data.searchQuery));
 		}
 		if (feedFilter) {
-			return data.items.filter((item) => item.channelTitle === feedFilter);
+			return allItems.filter((item) => item.channelTitle === feedFilter);
 		}
-		return data.items;
+		return allItems;
+	});
+
+	let visibleItems = $derived(filteredItems.slice(0, visibleCount));
+
+	$effect(() => {
+		const _q = data.searchQuery;
+		const _f = feedFilter;
+
+		visibleCount = itemsPerPage;
+		focusedIndex = 0;
 	});
 
 	$effect(() => {
-		const _ = filteredItems;
-		visibleItems = filteredItems.slice(0, itemsPerPage);
-		focusedIndex = 0;
+		if (focusedIndex >= visibleItems.length && visibleItems.length > 0) {
+			focusedIndex = visibleItems.length - 1;
+		}
 	});
 
 	$effect(() => {
@@ -62,11 +76,7 @@
 			(entries) => {
 				if (entries[0].isIntersecting && visibleItems.length < filteredItems.length) {
 					setTimeout(() => {
-						const nextBatch = filteredItems.slice(
-							visibleItems.length,
-							visibleItems.length + itemsPerPage
-						);
-						visibleItems = [...visibleItems, ...nextBatch];
+						visibleCount += itemsPerPage;
 					}, 300);
 				}
 			},
@@ -81,19 +91,14 @@
 	});
 
 	async function handleCloseItem(itemId: string) {
-		const itemToClose = visibleItems.find((item) => item.id === itemId);
-		if (itemToClose) {
+		// 4. Optimistic UI
+		allItems = allItems.filter((item) => item.id !== itemId);
+
+		// 5. Background: Persist to DB
+		try {
 			await updateItem(itemId, { closed: true });
-
-			const indexInData = data.items.findIndex((item) => item.id === itemId);
-			if (indexInData !== -1) {
-				data.items.splice(indexInData, 1);
-			}
-			visibleItems = visibleItems.filter((item) => item.id !== itemId);
-
-			if (focusedIndex >= visibleItems.length && visibleItems.length > 0) {
-				focusedIndex = visibleItems.length - 1;
-			}
+		} catch (e) {
+			console.error('Failed to close item', e);
 		}
 	}
 
@@ -125,7 +130,16 @@
 <svelte:window onkeydown={(e) => handleKeydown(e)} />
 
 <main class="mx-auto max-w-2xl p-4 pb-32">
-	{#if data.items.length === 0}
+	{#if sync.isSyncing}
+		<div
+			transition:slide={{ duration: 200 }}
+			class="mb-2 flex flex-col items-center justify-center gap-2 p-4"
+		>
+			<LoaderCircle class="h-10 w-10 animate-spin text-primary" />
+			<span class="font-sm text-tertiary">Checking for fresh news...</span>
+		</div>
+	{/if}
+	{#if allItems.length === 0}
 		<div class="rounded-xl border border-dashed border-tertiary p-10 text-center">
 			<p class="text-lg text-content">No stories yet.</p>
 			<p class="text-tertiary">Subscribe to an RSS channel.</p>

@@ -1,15 +1,17 @@
-// Using cyrb53 hash
-export function generateItemId(
-	link: string,
-	title: string,
-	channelId: string,
-	pubDate?: string
-): string {
-	const normalizedLink = link.trim().toLowerCase();
-	const normalizedTitle = title.trim().toLowerCase();
-	const normalizedChannel = channelId.trim().toLowerCase();
+import type { UIItem } from '$lib/types/rss';
 
-	const dataString = `${normalizedLink}|${normalizedChannel}|${normalizedTitle}|${pubDate || ''}`;
+export function generateItemId(item: { guid?: string; link?: string }, channelId: string): string {
+	// 1. Prefer GUID if it exists and is not empty
+	let uniqueString = item.guid && item.guid.trim().length > 0 ? item.guid : item.link || '';
+
+	// 2. Fallback: If both are missing (bad feed), use a random string or rigorous hash
+
+	// Normalize
+	const normalizedId = uniqueString.trim();
+	const normalizedChannel = channelId.trim();
+
+	// Only combine ID + Channel.
+	const dataString = `${normalizedId}|${normalizedChannel}`;
 
 	let h1 = 0xdeadbeef,
 		h2 = 0x41c6ce57;

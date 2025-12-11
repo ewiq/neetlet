@@ -41,7 +41,7 @@
 
 <div class="space-y-2">
 	<div class="flex items-center gap-2 text-base font-semibold text-content">
-		<div class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary">
+		<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-tertiary">
 			<Settings size={20} class="text-primary" />
 		</div>
 		<span>Settings</span>

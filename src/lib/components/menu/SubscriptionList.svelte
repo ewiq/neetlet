@@ -112,7 +112,7 @@
 <div class="flex h-full flex-col">
 	<div class="space-between mb-2 flex items-center text-base font-semibold text-content">
 		<div class="flex shrink-0 items-center gap-2">
-			<div class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary">
+			<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-tertiary">
 				<Rss size={20} class="text-primary" />
 			</div>
 		</div>
@@ -125,7 +125,7 @@
 			<input
 				type="text"
 				bind:value={filterText}
-				class="p w-full rounded-lg border border-muted bg-background py-2 pr-8 pl-8
+				class="p w-full rounded-lg border border-muted bg-background py-1 pr-8 pl-8
                    text-sm font-light text-content placeholder:text-tertiary
                    focus:ring-2 focus:ring-primary focus:outline-none"
 			/>
@@ -175,10 +175,10 @@
 			>
 				<button
 					onclick={() => filterByChannel(channel)}
-					class="flex min-w-0 grow items-center gap-2 rounded-md py-0.5 text-left text-sm text-content transition-colors group-hover:text-tertiary hover:bg-secondary hover:text-content"
+					class="flex min-w-0 grow items-center gap-2 rounded-md px-1.5 pr-1 pl-0 text-left text-sm text-accent transition-colors group-hover:opacity-50 hover:bg-secondary"
 				>
 					<div
-						class="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-white text-tertiary group-hover:opacity-50"
+						class="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-white text-tertiary group-hover:opacity-50"
 					>
 						{#if channel.image}
 							<img
@@ -187,7 +187,7 @@
 								class=" h-full w-full scale-75 rounded object-cover"
 							/>
 						{:else}
-							<HashIcon size={14} />
+							<HashIcon size={16} />
 						{/if}
 					</div>
 
@@ -199,7 +199,7 @@
 				<button
 					onclick={(e) => handleUnsubscribe(channel.link, e)}
 					disabled={isDeleting}
-					class="group m-0.5 flex shrink-0 items-center justify-center rounded-full p-1 text-accent transition hover:text-tertiary"
+					class="group m-0.5 mr-1 flex shrink-0 items-center justify-center rounded-full p-1 text-accent transition hover:text-tertiary"
 					aria-label="Unsubscribe"
 				>
 					<X size={20} />

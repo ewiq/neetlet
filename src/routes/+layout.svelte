@@ -11,20 +11,18 @@
 	import { searchbarState } from '$lib/stores/searchbar.svelte';
 	import { currentTime } from '$lib/stores/time.svelte';
 	import { syncAllFeeds } from '$lib/services/feedSync';
+	import { sync } from '$lib/stores/sync.svelte';
 
 	let { children } = $props();
 	let lastScrollY = 0;
 
-	// Configuration
 	const REFRESH_INTERVAL = 15 * 60 * 1000;
 	const INITIAL_SYNC_COOLDOWN = 5 * 60 * 1000;
-	const SYNC_KEY = 'leaklet-last-sync';
-
-	let isSyncing = $state(false);
+	const SYNC_KEY = 'lastSync';
 
 	async function performSync() {
-		if (isSyncing) return;
-		isSyncing = true;
+		if (sync.isSyncing) return;
+		sync.isSyncing = true;
 		try {
 			await syncAllFeeds();
 			localStorage.setItem(SYNC_KEY, Date.now().toString());
@@ -32,7 +30,7 @@
 		} catch (error) {
 			console.error('Auto-sync failed:', error);
 		} finally {
-			isSyncing = false;
+			sync.isSyncing = false;
 		}
 	}
 
@@ -163,7 +161,7 @@
 	<title>leatly</title>
 </svelte:head>
 
-<main class="h-100dvh m-0 border-0 bg-background p-0">
+<main class="m-0 h-dvh border-0 bg-background p-0">
 	<Menu {handleNewSubscription} />
 	{@render children()}
 </main>

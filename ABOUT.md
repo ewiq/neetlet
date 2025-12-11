@@ -1,24 +1,15 @@
-# neetlet
+# leatly
 
 ## Description
 
-neetlet comes to rescue humanity from doomscrolling.
-
-- neatlet
-- leaklet
-- neetlet
-- neequo
-- neaquo
-- sneaklet
-- onalme
-- leatly
+leatly comes to rescue humanity from doomscrolling.
 
 Create, customize and share your own feed and freely choose what content you want to be exposted to. Fast and lightweight. No login needed and all data is stored on your side. No ai. You get a social media-like feed, but without the addictive, time-robbing and brain-sucking algorithms.
 Let's free the internet with Personal Media
 
 ## Tech Stack
 
-- **Framework:** SveltnmKit - Svelte 5
+- **Framework:** SvelteKit - Svelte 5
 - **Deployment:** Cloudflare Workers
 - **Styling:** Tailwind CSS
 - **Database:** IDB, and minimal Cloudflare D1 with Drizzle ORM,
@@ -39,9 +30,8 @@ Let's free the internet with Personal Media
 
 ### Next
 
-- UI BUG: Subs menu input - Slightly hidden by mobile keyboard - add padding to bottom ?
-- Add loading circle to top of feed when fetching
-- Suggestion: Add items that where fetched directly, channel by channel to the feed, not in a batch
+- Clear double searchbar (mobile)
+- Refine handleSearch to include title, author, desc etc.
 
 COLLECTIONS:
 
@@ -66,7 +56,6 @@ COLLECTIONS:
 - LARGE RSS COMPATIBILITY TESTING (see below collected problems)
 - Add api rate limiting
 - Domain checking and validation ('extractdomain') refactor and enhancment
-- Handle batch request for large amounts of subscribed feeds when syncing and make sure its optimized.
 - Handle old item deletion
 - Implement 'RSS Feed Finder' - If not valid xml URL, but valid page, try to find any rss link on the website and propose to user.
 - Create sharable link to import RSS collection (D1 db). Handle slow import in UI. Load list of channels, and then let user select/customize channel list before import
@@ -75,6 +64,7 @@ COLLECTIONS:
 - Separate youtube, blog, news, podcasts sections in channel lists
 - Implement deletions of oldest (and not saved) items
 - Handle feeds with no or invalid pubDate - add date '0'/current when importing?
+- Suggestion: Add items that where fetched directly, channel by channel to the feed, not in a batch
 
 ### Shuffle algorithm ideas
 

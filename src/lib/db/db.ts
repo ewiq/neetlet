@@ -29,21 +29,18 @@ export async function saveFeedToDB(feed: NormalizedRSSFeed, sourceUrl: string) {
 	const itemStore = tx.objectStore('items');
 
 	const timestamp = Date.now();
+	const channelId = feed.data.link;
 
 	// --- Save Channel ---
-	const channelData: DBChannel = {
+	await channelStore.put({
 		...feed.data,
 		savedAt: timestamp,
 		feedUrl: sourceUrl
-	};
+	});
 
-	await channelStore.put(channelData);
-
-	// --- Save Items ---
+	// --- Save Items (Upsert Strategy)---
 	const operations = feed.items.map(async (item) => {
-		const channelId = feed.data.link;
-
-		const itemId = generateItemId(item.link, item.title, channelId, item.pubDate);
+		const itemId = generateItemId(item, channelId);
 
 		const existingItem = await itemStore.get(itemId);
 
@@ -59,6 +56,28 @@ export async function saveFeedToDB(feed: NormalizedRSSFeed, sourceUrl: string) {
 			};
 			return itemStore.put(newItem);
 		} else {
+			// UPDATE: Existing Item
+			// We recognize this item (same GUID/Link), but the title might be fixed.
+
+			const hasContentChanged =
+				existingItem.title !== item.title ||
+				existingItem.description !== item.description ||
+				existingItem.image !== item.image;
+
+			if (hasContentChanged) {
+				const updatedItem: DBItem = {
+					...existingItem,
+					title: item.title,
+					description: item.description,
+					link: item.link,
+					pubDate: item.pubDate,
+					author: item.author,
+					category: item.category,
+					image: item.image
+				};
+				return itemStore.put(updatedItem);
+			}
+
 			return Promise.resolve();
 		}
 	});
