@@ -119,7 +119,7 @@
 		</p>
 		<div class="mt-2 flex items-center justify-between border-t border-muted pt-2">
 			<button
-				class="cursor-pointer rounded-full p-2 text-tertiary transition hover:bg-muted hover:text-primary"
+				class="cursor-pointer rounded-full p-2 text-content transition hover:bg-secondary hover:text-primary"
 				title="Save to Favourites"
 			>
 				<Bookmark class="h-6 w-6" />

@@ -1,8 +1,7 @@
 import { getAllChannels, saveFeedToDB } from '$lib/db/db';
 import type { RSSFeedResponse } from '$lib/types/rss';
 
-// Process 5 feeds per request to keep Cloudflare Worker execution short
-const BATCH_SIZE = 5;
+const BATCH_SIZE = 20;
 
 export async function syncAllFeeds() {
 	console.log('Starting feed sync...');

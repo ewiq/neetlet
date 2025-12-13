@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { LoaderCircle, Plus } from 'lucide-svelte';
 	import { tick } from 'svelte';
+	import { slide } from 'svelte/transition';
 	import { toastData } from '$lib/stores/toast.svelte';
 	import type { RSSFeedResponse } from '$lib/types/rss';
 	import { getAllChannels, saveFeedToDB } from '$lib/db/db';
@@ -8,45 +9,32 @@
 	import SubscriptionList from './SubscriptionList.svelte';
 
 	let { onSubscribe } = $props();
-
 	let subscriptionUrl = $state('');
-
-	// function handleFocus(e: FocusEvent) {
-	// 	setTimeout(() => {
-	// 		const target = e.target as HTMLElement;
-	// 		target.scrollIntoView({ behavior: 'smooth', block: 'end' });
-	// 	}, 150);
-	// }
+	let isFormExpanded = $state(sessionStorage.getItem('isSubButtonExpanded') === 'true');
 
 	async function subscribe() {
 		if (!subscriptionUrl.trim()) return;
-
 		menuState.isSubscriptionLoading = true;
 		toastData.message = '';
 		await tick();
-
 		try {
 			const response = await fetch('/api/subscribe', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ url: subscriptionUrl })
 			});
-
 			const result = (await response.json()) as RSSFeedResponse;
-
 			if (result.success) {
 				const existingChannels = await getAllChannels();
 				const isDuplicate = existingChannels.some(
 					(channel) => channel.link === result.data.data.link
 				);
-
 				if (isDuplicate) {
 					toastData.message = 'You are already subscribed to this channel!';
 					toastData.type = 'info';
 					subscriptionUrl = '';
 					return;
 				}
-
 				try {
 					await saveFeedToDB(result.data, result.feedUrl);
 					console.log('Feed saved to IDB');
@@ -57,6 +45,7 @@
 				toastData.type = 'success';
 				onSubscribe?.(result.data);
 				subscriptionUrl = '';
+				isFormExpanded = false;
 			} else {
 				toastData.message = result.error || 'Failed to subscribe. Please try again.';
 				toastData.type = 'error';
@@ -69,44 +58,52 @@
 			menuState.isSubscriptionLoading = false;
 		}
 	}
+
+	function toggleForm() {
+		isFormExpanded = !isFormExpanded;
+		sessionStorage.setItem('isSubButtonExpanded', `${isFormExpanded}`);
+	}
 </script>
 
 <div class="flex h-full flex-col pb-[env(safe-area-inset-bottom)]">
 	<div class="min-h-0 grow overflow-auto">
 		<SubscriptionList></SubscriptionList>
 	</div>
-
 	<div class="flex flex-col space-y-2">
 		<div class="border-t border-muted"></div>
-		<div class="mb-1 flex items-center gap-2 text-base text-content">
+		<button
+			onclick={toggleForm}
+			class="flex min-h-10 w-full cursor-pointer items-center gap-2 rounded-lg border border-muted bg-background text-base text-content transition hover:bg-secondary"
+		>
 			<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-tertiary">
 				<Plus size={20} class="text-primary" />
 			</div>
-			<span>Add new sub</span>
-		</div>
-		<form onsubmit={subscribe}>
-			<div class="relative flex items-center">
-				<!-- Removed for now as handled by viewport -->
-				<!-- onfocus={handleFocus} -->
-				<input
-					id="subscriptionUrl"
-					type="text"
-					placeholder="https://example.com/rss"
-					bind:value={subscriptionUrl}
-					class="w-full rounded-lg border border-muted bg-background px-3 py-2 text-sm text-content placeholder:text-tertiary focus:ring-2 focus:ring-primary focus:outline-none"
-				/>
-			</div>
-			<button
-				onclick={subscribe}
-				disabled={menuState.isSubscriptionLoading}
-				class="mt-2 flex min-h-10 w-full cursor-pointer items-center justify-center rounded-lg bg-accent py-2 text-sm font-medium text-surface transition hover:bg-content disabled:opacity-50"
-			>
-				{#if menuState.isSubscriptionLoading}
-					<LoaderCircle class="h-5 w-5 animate-spin" />
-				{:else}
-					Subscribe
-				{/if}
-			</button>
-		</form>
+			<span>Add new </span>
+		</button>
+
+		{#if isFormExpanded}
+			<form onsubmit={subscribe} transition:slide={{ duration: 300 }}>
+				<div class="relative flex items-center">
+					<input
+						id="subscriptionUrl"
+						type="text"
+						placeholder="https://example.com/rss"
+						bind:value={subscriptionUrl}
+						class="w-full rounded-lg border border-muted bg-background px-3 py-2 text-sm text-content placeholder:text-tertiary focus:ring-2 focus:ring-primary focus:outline-none"
+					/>
+				</div>
+				<button
+					onclick={subscribe}
+					disabled={menuState.isSubscriptionLoading}
+					class="mt-2 flex min-h-10 w-full cursor-pointer items-center justify-center rounded-lg bg-accent py-2 text-sm font-medium text-surface transition hover:bg-content disabled:opacity-50"
+				>
+					{#if menuState.isSubscriptionLoading}
+						<LoaderCircle class="h-5 w-5 animate-spin" />
+					{:else}
+						Subscribe
+					{/if}
+				</button>
+			</form>
+		{/if}
 	</div>
 </div>

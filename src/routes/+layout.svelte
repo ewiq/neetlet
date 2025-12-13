@@ -14,11 +14,11 @@
 	import { sync } from '$lib/stores/sync.svelte';
 
 	let { children } = $props();
-	let lastScrollY = 0;
 
 	const REFRESH_INTERVAL = 15 * 60 * 1000;
 	const INITIAL_SYNC_COOLDOWN = 5 * 60 * 1000;
 	const SYNC_KEY = 'lastSync';
+	let lastScrollY = 0;
 
 	async function performSync() {
 		if (sync.isSyncing) return;
@@ -35,76 +35,44 @@
 	}
 
 	$effect(() => {
-		let intervalId: ReturnType<typeof setInterval>;
+		const lastSync = parseInt(localStorage.getItem(SYNC_KEY) || '0');
+		const timeSinceLast = Date.now() - lastSync;
 
-		const init = async () => {
-			const lastSync = parseInt(localStorage.getItem(SYNC_KEY) || '0');
-			const now = Date.now();
-			const timeSinceLast = now - lastSync;
+		if (timeSinceLast > INITIAL_SYNC_COOLDOWN) {
+			performSync();
+		}
 
-			if (timeSinceLast > INITIAL_SYNC_COOLDOWN) {
-				console.log('Doing initial feed refresh...');
-				await performSync();
-			} else {
-				console.log(
-					`Skipping initial refresh (Last sync: ${Math.round(timeSinceLast / 1000)}s ago)`
-				);
-			}
+		const intervalId = setInterval(performSync, REFRESH_INTERVAL);
 
-			intervalId = setInterval(async () => {
-				console.log('Triggering periodic refresh...');
-				await performSync();
-			}, REFRESH_INTERVAL);
-		};
-
-		init();
-
-		return () => {
-			if (intervalId) clearInterval(intervalId);
-		};
+		return () => clearInterval(intervalId);
 	});
 
 	function handleScroll() {
 		if (menuState.isSubsMenuOpen) return;
-
 		const currentScrollY = window.scrollY;
 
+		// Ignore bounce scrolling
 		if (currentScrollY < 0) return;
 
-		// Mobile
-		// if (settings.isMobile) {
-		// 	if (currentScrollY <= 50) {
-		// 		menuState.isMenuHidden = false;
-		// 	} else {
-		// 		menuState.isMenuHidden = true;
-		// 		menuState.isSettingsMenuOpen = false;
-		// 	}
-		// 	lastScrollY = currentScrollY;
-		// 	return;
-		// }
-
-		// Desktop
 		const scrollDelta = currentScrollY - lastScrollY;
 
-		if (Math.abs(scrollDelta) > 10) {
-			if (scrollDelta > 0) {
-				if (currentScrollY > 50) {
-					menuState.isMenuHidden = true;
-					menuState.isSettingsMenuOpen = false;
-				}
-			} else {
-				menuState.isMenuHidden = false;
-			}
-		}
-
-		if (currentScrollY <= 50) {
+		// Always show menu at very top
+		if (currentScrollY < 50) {
 			menuState.isMenuHidden = false;
+			lastScrollY = currentScrollY;
+			return;
 		}
 
-		lastScrollY = currentScrollY;
+		// Toggle menu based on scroll direction
+		if (Math.abs(scrollDelta) > 10) {
+			menuState.isMenuHidden = scrollDelta > 0;
+			if (menuState.isMenuHidden) menuState.isSettingsMenuOpen = false;
+			lastScrollY = currentScrollY;
+		}
 	}
 
-	function handleKeydown(e: KeyboardEvent) {
+	function handleGlobalKeydown(e: KeyboardEvent) {
+		// Ctrl + K for search
 		if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
 			e.preventDefault();
 			searchbarState.toggleSearchbar();
@@ -122,19 +90,16 @@
 	}
 
 	$effect(() => {
-		const stop = currentTime.startUpdating();
+		const stopTime = currentTime.startUpdating();
 		initializeSettings();
-		return stop;
-	});
 
-	// Scroll tracking
-	$effect(() => {
-		const cleanup = trackDeviceState();
+		const stopDevice = trackDeviceState();
 
 		window.addEventListener('scroll', handleScroll, { passive: true });
 
 		return () => {
-			cleanup();
+			stopDevice();
+			stopTime();
 			window.removeEventListener('scroll', handleScroll);
 		};
 	});
@@ -142,26 +107,23 @@
 	$effect(() => {
 		if (settings.isMobile && menuState.isSubsMenuOpen) {
 			lockScroll();
-
 			menuState.isMenuHidden = false;
 		} else {
 			unlockScroll();
 		}
 
-		return () => {
-			unlockScroll();
-		};
+		return () => unlockScroll();
 	});
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
+<svelte:window onkeydown={handleGlobalKeydown} />
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
 	<title>leatly</title>
 </svelte:head>
 
-<main class="m-0 h-dvh border-0 bg-background p-0">
+<main class="m-0 min-h-dvh border-0 bg-background p-0">
 	<Menu {handleNewSubscription} />
 	{@render children()}
 </main>

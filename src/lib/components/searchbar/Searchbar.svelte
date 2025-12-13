@@ -53,7 +53,7 @@
 	}
 </script>
 
-{#if !searchbarState.isSearchbarOpen}
+{#if !searchbarState.isSearchbarOpen && !settings.isMobile}
 	<SearchButton bind:inputRef></SearchButton>
 {/if}
 

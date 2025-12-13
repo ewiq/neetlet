@@ -9,35 +9,14 @@
 	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import { updateItem } from '$lib/db/db';
 	import { sync } from '$lib/stores/sync.svelte';
-	import { duration } from 'drizzle-orm/gel-core';
 
-	beforeNavigate(({ type, cancel }) => {
-		if (type === 'popstate') {
-			const SCROLL_THRESHOLD = 300;
-			if (window.scrollY > SCROLL_THRESHOLD) {
-				cancel();
-				window.scrollTo({ top: 0, behavior: 'smooth' });
-			}
-		}
-	});
-
-	afterNavigate(() => {
-		window.scrollTo({ top: 0, behavior: 'smooth' });
-	});
-
-	let { data }: { data: PageData; isSyncing: boolean } = $props();
+	let { data }: { data: PageData } = $props();
 
 	let allItems = $state(data.items);
-
-	// 2. Keep local state in sync if data changes (e.g. navigation or search param reload)
-	$effect(() => {
-		allItems = data.items;
-	});
-
 	let itemsPerPage = 10;
 	let visibleCount = $state(itemsPerPage);
-
 	let loadTrigger: HTMLElement | undefined = $state();
+
 	let focusedIndex = $state(0);
 	let isKeyboardScrolling = $state(false);
 
@@ -55,10 +34,26 @@
 
 	let visibleItems = $derived(filteredItems.slice(0, visibleCount));
 
-	$effect(() => {
-		const _q = data.searchQuery;
-		const _f = feedFilter;
+	function scrollToTop() {
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	}
 
+	beforeNavigate(({ type, cancel }) => {
+		if (type === 'popstate' && window.scrollY > 300) {
+			cancel();
+			scrollToTop();
+		}
+	});
+
+	afterNavigate(() => {
+		scrollToTop();
+	});
+
+	$effect(() => {
+		allItems = data.items;
+	});
+
+	$effect(() => {
 		visibleCount = itemsPerPage;
 		focusedIndex = 0;
 	});
@@ -71,7 +66,6 @@
 
 	$effect(() => {
 		if (!loadTrigger) return;
-
 		const observer = new IntersectionObserver(
 			(entries) => {
 				if (entries[0].isIntersecting && visibleItems.length < filteredItems.length) {
@@ -82,7 +76,6 @@
 			},
 			{ rootMargin: '0px' }
 		);
-
 		observer.observe(loadTrigger);
 
 		return () => {
@@ -91,10 +84,7 @@
 	});
 
 	async function handleCloseItem(itemId: string) {
-		// 4. Optimistic UI
 		allItems = allItems.filter((item) => item.id !== itemId);
-
-		// 5. Background: Persist to DB
 		try {
 			await updateItem(itemId, { closed: true });
 		} catch (e) {
@@ -102,12 +92,10 @@
 		}
 	}
 
-	function handleClearSearch() {
-		window.scrollTo({ top: 0, behavior: 'smooth' });
-	}
-
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+		if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
 
 		if (e.key === 'j' || e.key === 'ArrowDown') {
 			e.preventDefault();
@@ -160,7 +148,7 @@
 					{#if filteredItems.length !== 0}
 						<a
 							href="?"
-							onclick={handleClearSearch}
+							onclick={scrollToTop}
 							class="shrink-0 cursor-pointer text-sm text-primary hover:underline"
 						>
 							Clear search
@@ -177,7 +165,7 @@
 					</p>
 					<a
 						href="?"
-						onclick={handleClearSearch}
+						onclick={scrollToTop}
 						class="mt-2 cursor-pointer text-primary hover:underline"
 					>
 						Clear search

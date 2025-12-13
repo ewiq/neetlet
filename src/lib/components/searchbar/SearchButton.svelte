@@ -11,7 +11,7 @@
 	);
 </script>
 
-<div class="z-50 md:fixed md:right-4 md:bottom-4" in:fade={{ duration: 150 }}>
+<div class="z-50 md:fixed md:right-4 md:bottom-4">
 	<button
 		onclick={() => searchbarState.toggleSearchbar()}
 		class="group flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-muted bg-surface text-content shadow transition hover:bg-secondary md:w-auto md:min-w-10 md:space-x-2 md:px-3"

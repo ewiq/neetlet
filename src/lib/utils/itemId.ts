@@ -1,5 +1,3 @@
-import type { UIItem } from '$lib/types/rss';
-
 export function generateItemId(item: { guid?: string; link?: string }, channelId: string): string {
 	// 1. Prefer GUID if it exists and is not empty
 	let uniqueString = item.guid && item.guid.trim().length > 0 ? item.guid : item.link || '';

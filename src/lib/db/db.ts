@@ -1,6 +1,7 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import type { DBChannel, DBItem, NormalizedRSSFeed, RSSDatabase } from '$lib/types/rss';
 import { generateItemId } from '$lib/utils/itemId';
+import { normalizeText } from '$lib/utils/searchUtils';
 
 const DB_NAME = 'rss-reader-db';
 const DB_VERSION = 1;
@@ -41,8 +42,8 @@ export async function saveFeedToDB(feed: NormalizedRSSFeed, sourceUrl: string) {
 	// --- Save Items (Upsert Strategy)---
 	const operations = feed.items.map(async (item) => {
 		const itemId = generateItemId(item, channelId);
-
 		const existingItem = await itemStore.get(itemId);
+		const searchTokens = createSearchTokens(item);
 
 		if (!existingItem) {
 			const newItem: DBItem = {
@@ -52,7 +53,8 @@ export async function saveFeedToDB(feed: NormalizedRSSFeed, sourceUrl: string) {
 				savedAt: timestamp,
 				read: false,
 				closed: false,
-				favourite: false
+				favourite: false,
+				_searchTokens: searchTokens
 			};
 			return itemStore.put(newItem);
 		} else {
@@ -73,7 +75,8 @@ export async function saveFeedToDB(feed: NormalizedRSSFeed, sourceUrl: string) {
 					pubDate: item.pubDate,
 					author: item.author,
 					category: item.category,
-					image: item.image
+					image: item.image,
+					_searchTokens: searchTokens
 				};
 				return itemStore.put(updatedItem);
 			}
@@ -126,4 +129,25 @@ export async function updateItem(itemId: string, updates: Partial<DBItem>) {
 		await store.put(updatedItem);
 	}
 	await tx.done;
+}
+
+function createSearchTokens(item: any): string {
+	console.log(
+		normalizeText(
+			[
+				item.title,
+				item.description,
+				item.author,
+				Array.isArray(item.category) ? item.category.join(' ') : item.category
+			].join(' ')
+		)
+	);
+	return normalizeText(
+		[
+			item.title,
+			item.description,
+			item.author,
+			Array.isArray(item.category) ? item.category.join(' ') : item.category
+		].join(' ')
+	);
 }

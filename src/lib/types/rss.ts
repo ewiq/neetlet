@@ -72,6 +72,7 @@ export interface DBItem extends NormalizedRSSItem {
 	read: boolean;
 	closed: boolean;
 	favourite: boolean;
+	_searchTokens: string;
 }
 
 export interface RSSDatabase extends DBSchema {
@@ -82,7 +83,7 @@ export interface RSSDatabase extends DBSchema {
 	items: {
 		key: string;
 		value: DBItem;
-		indexes: { 'by-channel': string };
+		indexes: { 'by-channel': string; 'by-date': string };
 	};
 }
 

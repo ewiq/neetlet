@@ -11,12 +11,5 @@ export function searchItem(item: any, query: string): boolean {
 	const normalizedQuery = normalizeText(query);
 	if (!normalizedQuery) return true;
 
-	const textToSearch = [
-		item.title,
-		item.description,
-		item.author,
-		Array.isArray(item.category) ? item.category.join(' ') : item.category
-	].join(' ');
-
-	return normalizeText(textToSearch).includes(normalizedQuery);
+	return item._searchTokens.includes(normalizedQuery);
 }

@@ -52,7 +52,7 @@
 			menuJustOpened = true;
 			setTimeout(() => {
 				menuJustOpened = false;
-			}, 20);
+			}, 50);
 		}
 	});
 
@@ -111,21 +111,15 @@
 
 <div class="flex h-full flex-col">
 	<div class="space-between mb-2 flex items-center text-base font-semibold text-content">
-		<div class="flex shrink-0 items-center gap-2">
-			<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-tertiary">
-				<Rss size={20} class="text-primary" />
-			</div>
-		</div>
-
-		<div class="relative mx-2 flex-1 flex-row">
-			<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+		<div class="relative flex-1 flex-row">
+			<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2">
 				<Search class="h-4 w-4 text-tertiary" />
 			</div>
 
 			<input
 				type="text"
 				bind:value={filterText}
-				class="p w-full rounded-lg border border-muted bg-background py-1 pr-8 pl-8
+				class="w-full rounded-lg border border-muted bg-background py-2 pr-8 pl-8
                    text-sm font-light text-content placeholder:text-tertiary
                    focus:ring-2 focus:ring-primary focus:outline-none"
 			/>
@@ -152,7 +146,7 @@
 					sortMode = 'a_z';
 				}
 			}}
-			class="flex cursor-pointer items-center rounded-full p-2 text-content transition hover:text-tertiary"
+			class="m-1 flex cursor-pointer items-center rounded-full p-1 text-content transition hover:text-tertiary"
 			title="Sort"
 		>
 			{#if sortMode === 'a_z'}
