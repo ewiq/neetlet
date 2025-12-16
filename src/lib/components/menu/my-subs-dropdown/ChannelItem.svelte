@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { invalidate } from '$app/navigation';
 	import { updateChannelSettings } from '$lib/db/db';
-	import { toastData } from '$lib/stores/toast.svelte';
 	import type { DBChannel } from '$lib/types/rss';
 	import { filterByChannel } from '$lib/utils/filterByChannel';
 	import { Ellipsis, HashIcon, ChevronRight } from 'lucide-svelte';
@@ -30,10 +29,6 @@
 	let editingTitle = $state('');
 	let dropdownButtonElement = $state<HTMLButtonElement | null>(null);
 
-	// Shared styling to ensure exact same dimensions in both modes
-	const rowBaseClasses =
-		'flex min-w-0 grow items-center gap-2 rounded-lg py-1.5 pr-2 pl-2 transition-colors';
-
 	// Initialize edit state when entering edit mode
 	$effect(() => {
 		if (isEditing && editingTitle === '') {
@@ -43,7 +38,7 @@
 
 	function handleStartRename() {
 		editingTitle = channel.customTitle || channel.title;
-		onSetDropdownId(null); // Close dropdown
+		onSetDropdownId(null);
 		onSetEditingId(channel.link);
 	}
 
@@ -62,12 +57,8 @@
 		try {
 			await updateChannelSettings(channel.link, { customTitle: editingTitle.trim() });
 			await invalidate('app:feed');
-			toastData.message = 'Channel renamed';
-			toastData.type = 'success';
 		} catch (error) {
 			console.error('Failed to rename channel', error);
-			toastData.message = 'Failed to rename channel';
-			toastData.type = 'error';
 		} finally {
 			onSetEditingId(null);
 			editingTitle = '';
@@ -86,7 +77,11 @@
 
 <div class="flex items-center" transition:slide={{ duration: 200 }}>
 	{#if isEditing}
-		<div class="flex min-w-0 grow items-center gap-2 rounded-lg py-1 pr-2 pl-2 transition-colors">
+		<div
+			class="flex min-w-0 grow items-center gap-2 rounded-lg py-1 pr-2 pl-2 transition-colors {channel.hideOnMainFeed
+				? 'opacity-60'
+				: ''}"
+		>
 			<div class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary">
 				{#if channel.image}
 					<img
@@ -122,7 +117,9 @@
 	{:else}
 		<button
 			onclick={() => filterByChannel(channel)}
-			class="flex min-w-0 grow cursor-pointer items-center gap-2 rounded-lg py-1.5 pr-2 pl-2 text-left text-sm text-accent transition-colors hover:bg-secondary"
+			class="flex min-w-0 grow cursor-pointer items-center gap-2 rounded-lg py-1.5 pr-2 pl-2 text-left text-sm text-accent transition-colors hover:bg-secondary {channel.hideOnMainFeed
+				? 'opacity-60'
+				: ''}"
 		>
 			<div class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary">
 				{#if channel.image}

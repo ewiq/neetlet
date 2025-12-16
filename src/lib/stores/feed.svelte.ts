@@ -1,3 +1,4 @@
 export const feed = $state({
-	isItemClosing: false
+	isItemClosing: false,
+	isFavouriteRemoving: false
 });

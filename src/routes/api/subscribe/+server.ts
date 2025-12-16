@@ -22,27 +22,38 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { XMLParser } from 'fast-xml-parser';
 import { fetchWebpageIcon } from '$lib/utils/icon-fetcher';
 
-function extractDomain(url: string): string {
+// --- URL Helpers ---
+
+function ensureProtocol(url: string): string {
+	// If it starts with http:// or https://, leave it. Otherwise prepend https://
+	if (!/^https?:\/\//i.test(url)) {
+		return `https://${url}`;
+	}
+	return url;
+}
+
+function toggleWww(urlStr: string): string | null {
 	try {
-		const urlObj = new URL(url);
-		let hostname = urlObj.hostname;
-
-		if (hostname.startsWith('www.')) {
-			hostname = hostname.substring(4);
+		const url = new URL(urlStr);
+		if (url.hostname.startsWith('www.')) {
+			// Remove www.
+			url.hostname = url.hostname.replace(/^www\./, '');
+		} else {
+			// Add www.
+			url.hostname = `www.${url.hostname}`;
 		}
-
-		return 'https://www.' + hostname;
+		return url.toString();
 	} catch {
-		return '';
+		return null;
 	}
 }
 
-function isValidUrl(urlString: string): boolean {
+function getWebsiteRoot(link: string): string {
 	try {
-		const url = new URL(urlString);
-		return url.protocol === 'http:' || url.protocol === 'https:';
+		const url = new URL(link);
+		return url.origin;
 	} catch {
-		return false;
+		return '';
 	}
 }
 
@@ -55,10 +66,17 @@ async function isValidImageUrl(url: string): Promise<boolean> {
 
 		const response = await fetch(url, {
 			method: 'HEAD',
-			signal: controller.signal
+			signal: controller.signal,
+			headers: {
+				'User-Agent':
+					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+			}
 		});
 
 		clearTimeout(timeoutId);
+
+		// Some servers return 405 Method Not Allowed for HEAD, try generic check
+		if (!response.ok && response.status !== 405) return false;
 
 		const contentType = response.headers.get('content-type');
 		return contentType ? contentType.startsWith('image/') : false;
@@ -68,10 +86,13 @@ async function isValidImageUrl(url: string): Promise<boolean> {
 }
 
 function isValidXML(xmlText: string): boolean {
-	if (!xmlText.trim().startsWith('<')) return false;
-	const hasXmlDeclaration = xmlText.includes('<?xml');
+	if (!xmlText || !xmlText.trim()) return false;
+	const trimmed = xmlText.trim();
+	// Allow basic XML starting tags
+	if (!trimmed.startsWith('<')) return false;
+	const hasXmlDeclaration = trimmed.includes('<?xml');
 	const hasRssTag =
-		xmlText.includes('<rss') || xmlText.includes('<feed') || xmlText.includes('<rdf:RDF');
+		trimmed.includes('<rss') || trimmed.includes('<feed') || trimmed.includes('<rdf:RDF');
 	return hasXmlDeclaration || hasRssTag;
 }
 
@@ -80,7 +101,8 @@ function isValidRSSStructure(parsedData: any): { valid: boolean; error?: string 
 		if (!parsedData.rss.channel)
 			return { valid: false, error: 'RSS feed missing required <channel> element' };
 		const channel = parsedData.rss.channel;
-		if (!channel.title || !channel.link)
+		// Some feeds might be missing title/link but are still readable, but we enforce strictly for now
+		if (!channel.title && !channel.link)
 			return { valid: false, error: 'RSS channel missing required title or link' };
 		return { valid: true };
 	}
@@ -95,26 +117,6 @@ function isValidRSSStructure(parsedData: any): { valid: boolean; error?: string 
 		return { valid: true };
 	}
 	return { valid: false, error: 'Unrecognized feed format. Must be RSS 2.0, Atom, or RDF' };
-}
-
-function validateContentType(contentType: string | null): { valid: boolean; error?: string } {
-	if (!contentType) return { valid: true };
-	const validTypes = [
-		'application/rss+xml',
-		'application/xml',
-		'text/xml',
-		'application/atom+xml',
-		'application/rdf+xml',
-		'text/plain'
-	];
-	const lowerContentType = contentType.toLowerCase();
-	if (!validTypes.some((type) => lowerContentType.includes(type))) {
-		return {
-			valid: false,
-			error: `Invalid content type: ${contentType}. Expected RSS/XML content.`
-		};
-	}
-	return { valid: true };
 }
 
 function extractImageUrl(imageData: any): string | undefined {
@@ -184,7 +186,7 @@ function normalizeRSSFeed(parsedData: any): NormalizedRSSFeed {
 					category: extractCategories(item),
 					image: extractImageFromItem(item),
 					guid: extractText(item.guid) || extractText(item.id),
-					type: 'article' // Default to article for standard feeds
+					type: 'article'
 				})
 			)
 		};
@@ -257,10 +259,42 @@ function normalizeRSSFeed(parsedData: any): NormalizedRSSFeed {
 	};
 }
 
+// --- Fetch with Retry Logic (Handles WWW toggle) ---
+async function fetchWithRetry(
+	url: string,
+	signal: AbortSignal
+): Promise<{ response: Response; effectiveUrl: string }> {
+	const headers = {
+		'User-Agent':
+			'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+	};
+
+	try {
+		// Try original URL
+		const response = await fetch(url, { signal, headers });
+		return { response, effectiveUrl: url };
+	} catch (error: any) {
+		// Only retry on DNS errors (ENOTFOUND) or Connection Refused
+		if (
+			error.cause?.code === 'ENOTFOUND' ||
+			error.cause?.code === 'ECONNREFUSED' ||
+			error.message.includes('fetch failed')
+		) {
+			const altUrl = toggleWww(url);
+			if (altUrl && altUrl !== url) {
+				console.log(`Retrying fetch with alternate URL: ${altUrl}`);
+				const response = await fetch(altUrl, { signal, headers });
+				return { response, effectiveUrl: altUrl };
+			}
+		}
+		throw error;
+	}
+}
+
 // --- Helper: Process a Single Feed ---
 async function processSingleFeed(inputUrl: string): Promise<RSSFeedResponse> {
 	try {
-		let url = inputUrl;
+		let url = ensureProtocol(inputUrl); // Normalize plain text urls
 
 		// YouTube Handling
 		if (isYouTubeUrl(url)) {
@@ -278,17 +312,18 @@ async function processSingleFeed(inputUrl: string): Promise<RSSFeedResponse> {
 		}
 
 		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout per feed
+		const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
 		let response: Response;
+		let effectiveUrl: string;
+
 		try {
-			response = await fetch(url, {
-				signal: controller.signal,
-				headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RSS Reader/1.0)' }
-			});
+			const result = await fetchWithRetry(url, controller.signal);
+			response = result.response;
+			effectiveUrl = result.effectiveUrl;
 		} catch (fetchError: any) {
 			clearTimeout(timeoutId);
-			return { success: false, error: fetchError.message };
+			return { success: false, error: fetchError.message || 'Network request failed' };
 		}
 		clearTimeout(timeoutId);
 
@@ -298,7 +333,7 @@ async function processSingleFeed(inputUrl: string): Promise<RSSFeedResponse> {
 
 		const xmlText = await response.text();
 		if (!isValidXML(xmlText)) {
-			return { success: false, error: 'Invalid XML' };
+			return { success: false, error: 'Invalid XML or Not a Feed' };
 		}
 
 		// --- Parsing Configuration ---
@@ -338,7 +373,6 @@ async function processSingleFeed(inputUrl: string): Promise<RSSFeedResponse> {
 		let normalizedFeed: NormalizedRSSFeed;
 
 		if (url.includes('youtube.com/feeds/videos.xml')) {
-			// Wrap in try/catch for specific normalization errors
 			try {
 				normalizedFeed = normalizeYouTubeFeed(parsedResult);
 			} catch (e: any) {
@@ -351,27 +385,38 @@ async function processSingleFeed(inputUrl: string): Promise<RSSFeedResponse> {
 			normalizedFeed = normalizeRSSFeed(parsedResult);
 		}
 
-		// Image fallback logic
-		if (normalizedFeed.data.image) {
-			// Validate that the image URL actually points to an image
-			const isValid = await isValidImageUrl(normalizedFeed.data.image);
-			if (!isValid) {
-				normalizedFeed.data.image = undefined; // Clear invalid image URL
+		// --- INVERTED IMAGE LOGIC ---
+		// 1. Try to fetch high-quality Icon/Favicon from the Website URL
+		let iconFound = false;
+
+		if (normalizedFeed.data.link) {
+			try {
+				// Use the link found in the RSS feed (usually the website homepage)
+				const websiteUrl = normalizedFeed.data.link;
+				const fetchedIcon = await fetchWebpageIcon(websiteUrl);
+
+				if (fetchedIcon) {
+					normalizedFeed.data.image = fetchedIcon;
+					iconFound = true;
+				}
+			} catch (e) {
+				console.warn('Failed to fetch website icon:', e);
 			}
 		}
-		// If no valid image, fetch from website
-		if (!normalizedFeed.data.image && normalizedFeed.data.link) {
-			try {
-				const websiteUrl = extractDomain(normalizedFeed.data.link);
-				const fallbackIcon = await fetchWebpageIcon(websiteUrl);
-				if (fallbackIcon) normalizedFeed.data.image = fallbackIcon;
-			} catch {}
+
+		// 2. If no icon found, check the image provided in RSS XML
+		if (!iconFound && normalizedFeed.data.image) {
+			const isValid = await isValidImageUrl(normalizedFeed.data.image);
+			if (!isValid) {
+				normalizedFeed.data.image = undefined; // Remove if invalid/404
+			}
 		}
+
 		return {
 			success: true,
 			data: normalizedFeed,
 			sourceUrl: inputUrl,
-			feedUrl: url
+			feedUrl: effectiveUrl
 		};
 	} catch (error: any) {
 		return { success: false, error: error.message || 'Unknown Error' };
@@ -382,17 +427,12 @@ async function processSingleFeed(inputUrl: string): Promise<RSSFeedResponse> {
 export const POST: RequestHandler = async ({ request }) => {
 	const body = (await request.json()) as SubscribeRequestBody;
 
-	// CASE 1: Batch Processing (Array of URLs)
 	if (body.urls && Array.isArray(body.urls)) {
 		const urls = body.urls as string[];
-
-		// Later: Limit batch size if necessary (e.g. max 20 at a time)
 		const results = await Promise.all(urls.map((url) => processSingleFeed(url)));
-
 		return json({ results });
 	}
 
-	// CASE 2: Single URL
 	if (body.url) {
 		const result = await processSingleFeed(body.url);
 		if (!result.success) {

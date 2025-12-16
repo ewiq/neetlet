@@ -1,3 +1,5 @@
+// src/routes/+layout.ts
+
 import { getAllItems, getAllChannels, getAllCollections } from '$lib/db/db';
 import type { LayoutLoad } from './$types';
 import type { UIItem, DBChannel } from '$lib/types/rss';
@@ -8,7 +10,7 @@ export const load: LayoutLoad = async ({ url, depends }) => {
 	depends('app:feed');
 
 	const searchQuery = url.searchParams.get('q') || '';
-	const feedFilter = url.searchParams.get('feed');
+	const channelFilter = url.searchParams.get('channel');
 	const collectionFilter = url.searchParams.get('collection');
 	const favFilter = url.searchParams.get('favs');
 
@@ -21,7 +23,21 @@ export const load: LayoutLoad = async ({ url, depends }) => {
 	const channelMap = new Map<string, DBChannel>(channels.map((c) => [c.link, c]));
 	const nonClosedItems = items.filter((item) => !item.closed);
 
-	// Enrich items: Add channel title and channel img to items
+	let activeChannelTitle: string | undefined;
+	let activeCollectionName: string | undefined;
+
+	if (channelFilter) {
+		const activeChannel = channelMap.get(channelFilter);
+		activeChannelTitle = activeChannel
+			? activeChannel.customTitle || activeChannel.title
+			: undefined;
+	}
+
+	if (collectionFilter) {
+		const activeCollection = collections.find((c) => c.id === collectionFilter);
+		activeCollectionName = activeCollection ? activeCollection.name : undefined;
+	}
+
 	const enrichedItems: UIItem[] = nonClosedItems.map((item) => {
 		const channel = channelMap.get(item.channelId);
 		return {
@@ -31,23 +47,20 @@ export const load: LayoutLoad = async ({ url, depends }) => {
 		};
 	});
 
-	// Initial Filtering (Search, Feed, Collection)
 	let filteredItems = enrichedItems;
 
-	if (feedFilter) {
-		// TODO (later): FILTER ITEMS HERE??
-		// filteredItems = filteredItems.filter((item) => item.channelId === feedFilter);
+	if (channelFilter) {
+		filteredItems = filteredItems.filter((item) => item.channelId === channelFilter);
 	} else if (collectionFilter) {
-		// TODO (later): FILTER ITEMS HERE??
-		// filteredItems = filteredItems.filter((item) => {
-		// 	const channel = channelMap.get(item.channelId);
-		// 	return channel?.collectionIds?.includes(collectionFilter);
-		// });
+		const allowedChannelIds = new Set(
+			channels
+				.filter((c) => c.collectionIds && c.collectionIds.includes(collectionFilter))
+				.map((c) => c.link)
+		);
+		filteredItems = filteredItems.filter((item) => allowedChannelIds.has(item.channelId));
 	}
 
-	// Deduplicate items & main feed visibility rules
-	// Only apply deduplication and 'hideOnMainFeed' logic if we are viewing the aggregated Main Feed.
-	const isAggregatedView = !feedFilter && !collectionFilter && !favFilter;
+	const isAggregatedView = !channelFilter && !collectionFilter && !favFilter;
 
 	let processedItems = filteredItems;
 
@@ -57,7 +70,6 @@ export const load: LayoutLoad = async ({ url, depends }) => {
 		filteredItems.forEach((item) => {
 			const channel = channelMap.get(item.channelId);
 
-			// Skip items if the channel is hidden from main view
 			if (channel?.hideOnMainFeed) {
 				return;
 			}
@@ -77,17 +89,10 @@ export const load: LayoutLoad = async ({ url, depends }) => {
 		});
 	}
 
-	// Filter by favourites
 	if (favFilter) {
 		processedItems = processedItems.filter((item) => item.favourite);
 	}
 
-	// Search filtering
-	if (searchQuery) {
-		// TODO (later): FILTER ITEMS HERE??
-	}
-
-	// Sort by publication date
 	const sortedItems = processedItems.sort((a, b) => {
 		const dateA = a.pubDate ? new Date(a.pubDate).getTime() : a.savedAt;
 		const dateB = b.pubDate ? new Date(b.pubDate).getTime() : b.savedAt;
@@ -100,6 +105,8 @@ export const load: LayoutLoad = async ({ url, depends }) => {
 		collections,
 		searchQuery,
 		activeCollection: collectionFilter,
-		activeFeed: feedFilter
+		activeChannel: channelFilter,
+		activeChannelTitle,
+		activeCollectionName
 	};
 };

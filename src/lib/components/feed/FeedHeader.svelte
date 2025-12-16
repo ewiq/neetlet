@@ -2,15 +2,35 @@
 	import { slide } from 'svelte/transition';
 	import { Search } from 'lucide-svelte';
 
-	let { filteredCount, totalCount, searchQuery, feedFilter, favFilter, onClear } = $props();
+	let {
+		filteredCount,
+		totalCount,
+		searchQuery,
+		channelFilter,
+		favFilter,
+		collectionFilter,
+		channelTitle,
+		collectionName,
+		onClear
+	}: {
+		filteredCount: number;
+		totalCount: number;
+		searchQuery: string;
+		channelFilter: string | null;
+		favFilter: string | null;
+		collectionFilter: string | null;
+		channelTitle: string | undefined;
+		collectionName: string | undefined;
+		onClear: () => void;
+	} = $props();
 
-	let isFiltering = $derived(!!searchQuery || !!feedFilter || !!favFilter);
+	let isFiltering = $derived(!!searchQuery || !!channelFilter || !!favFilter || !!collectionFilter);
 </script>
 
 {#if totalCount === 0 && !isFiltering}
-	<div class="rounded-xl border border-dashed border-tertiary p-10 text-center">
-		<p class="text-lg text-content">No stories yet.</p>
-		<p class="text-tertiary">Subscribe to an RSS channel.</p>
+	<div class="rounded-xl p-10 text-center">
+		<p class="text-lg text-content">Nothing here yet...</p>
+		<p class="text-tertiary">Subscribe to channel.</p>
 	</div>
 {:else if isFiltering}
 	<div transition:slide={{ duration: 150 }} class="snap-start scroll-mt-32">
@@ -21,11 +41,14 @@
 					search result{filteredCount === 1 ? '' : 's'} for "<span class="font-medium text-content"
 						>{searchQuery}</span
 					>"
-				{:else if feedFilter}
-					result{filteredCount === 1 ? '' : 's'} for
-					<span class="font-medium text-content">{feedFilter}</span>
 				{:else if favFilter}
 					<span>favourite{filteredCount === 1 ? '' : 's'}</span>
+				{:else if channelFilter}
+					result{filteredCount === 1 ? '' : 's'} for
+					<span class="font-medium text-content">{channelTitle || 'Unknown Channel'}</span>
+				{:else if collectionFilter}
+					result{filteredCount === 1 ? '' : 's'} for
+					<span class="font-medium text-content">{collectionName || 'Unknown Collection'}</span>
 				{/if}
 			</p>
 
@@ -47,10 +70,12 @@
 			<p class="text-lg text-content">
 				{#if searchQuery}
 					No results found for "{searchQuery}"
-				{:else if feedFilter}
-					No results found for "{feedFilter}"
 				{:else if favFilter}
 					No favourites yet.
+				{:else if channelFilter}
+					No results found for "{channelTitle || 'Unknown Channel'}"
+				{:else if collectionFilter}
+					No results found for "{collectionName || 'Unknown Collection'}"
 				{/if}
 			</p>
 			<a href="?" onclick={onClear} class="mt-2 cursor-pointer text-primary hover:underline">

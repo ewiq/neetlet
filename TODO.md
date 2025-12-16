@@ -1,16 +1,9 @@
 ### NEXT
 
-- Correct error where duplicates if link changed, but not title, pubdate, desc, author ?
-- Add collection goto filter
-- Correct feed goto: by xml URL
-- Add snap-scroll to syncing FeedHeader too
-- Correct feedcard - add slide transition when favourite bookmark off to
-
-- OPTIMIZE +page.server to load items only slices
-- Move filtering logic to +page.ts when loading data
+- OPTIMIZE +layout.ts to load items only slices
+- Move filtering logic to +layout.ts (?) when loading data
 
 - Optimize syncing - only when on main feed - and on top of page - no sync when Subs dropdown is s
-- Correct bug where clicking on subscribe always scrolls back to top
 - Correct bug where syncing time get registered in local storage upon unsuccesful sync
 - Add isLoadingRemoving to subs listItem deletion (no opacity)
 - Faster syncing - load channel items sequentially to feed?
@@ -20,7 +13,6 @@
 ### BUGS
 
 - Keyboard post navigation has buggy behaviour -> Probably because of index number messed up by freshly appearing visibleItems
-- Mobile UI bug - scroll still possible by multiple input open/close
 - Refresh itemIndex after sync for correct keyboard navigation
 - Handle items with invalid date and no pubDate whatsoever in source xml
 - Navigation correction: ensure scroll: top beforenavigate also works on main feed
@@ -76,9 +68,6 @@
 
 ## RSS reader problems
 
-- When subscibing to: https://feeds.content.dowjones.io/public/rss/RSSOpinion
-- Image is not loaded properly -> although there clearly is a https://s.wsj.net/media/wsj_apple-touch-icon-180x180.png in source code.
-- Qubit - no icon image: https://qubit.hu/feed. Maybe Enable gid and handle otherwise for WSJ? PROBABLY DOESN'T FETCH because no WWW needed. -
-- Enhance URL: try without https, and better handleing of www. or no www.
+- When subscibing to: https://feeds.content.dowjones.io/public/rss/RSSOpinion 401 error
+- There clearly is a https://s.wsj.net/media/wsj_apple-touch-icon-180x180.png in source code.
 - Enhance Description parser: https://www.nme.com/feed gives html/MD text, http://feeds.feedburner.com/Archeyes give incorrect text.
-- Maybe rather do website icon first, and if no website icon, only then rss icon?

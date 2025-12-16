@@ -11,6 +11,7 @@
 	import { updateItem } from '$lib/db/db';
 	import { sync } from '$lib/stores/sync.svelte';
 	import { feed } from '$lib/stores/feed.svelte';
+	import { tick } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -22,8 +23,9 @@
 	let focusedIndex = $state(0);
 	let isKeyboardScrolling = $state(false);
 
-	let feedFilter = $derived(page.url.searchParams.get('feed'));
+	let channelFilter = $derived(page.url.searchParams.get('channel'));
 	let favFilter = $derived(page.url.searchParams.get('favs'));
+	let collectionFilter = $derived(page.url.searchParams.get('collection'));
 	let searchQuery = $derived(data.searchQuery);
 
 	let filteredItems = $derived.by(() => {
@@ -32,8 +34,16 @@
 		if (searchQuery.trim()) {
 			items = allItems.filter((item) => searchItem(item, searchQuery));
 		}
-		if (feedFilter) {
-			items = allItems.filter((item) => item.channelTitle === feedFilter);
+		if (channelFilter) {
+			items = allItems.filter((item) => item.channelId === channelFilter);
+		}
+
+		if (collectionFilter) {
+			const validChannels = data.channels.filter((c) =>
+				c.collectionIds?.includes(collectionFilter)
+			);
+			const validChannelIds = new Set(validChannels.map((c) => c.link));
+			items = items.filter((item) => validChannelIds.has(item.channelId));
 		}
 
 		if (favFilter) {
@@ -101,11 +111,13 @@
 			await updateItem(itemId, { closed: true });
 		} catch (e) {
 			console.error('Failed to close item', e);
+		} finally {
+			feed.isItemClosing = false;
 		}
-		feed.isItemClosing = false;
 	}
 
 	async function handleAddToFavourites(itemId: string) {
+		feed.isFavouriteRemoving = true;
 		const item = allItems.find((item) => item.id === itemId);
 
 		if (!item) {
@@ -120,8 +132,11 @@
 			allItems = allItems.map((i) =>
 				i.id === itemId ? { ...i, favourite: newFavouriteStatus } : i
 			);
+			await tick();
 		} catch (e) {
 			console.error('Failed to update favourite status', e);
+		} finally {
+			feed.isFavouriteRemoving = false;
 		}
 	}
 
@@ -180,7 +195,8 @@
 
 <svelte:window onkeydown={(e) => handleKeydown(e)} />
 
-<main class="mx-auto max-w-2xl p-4 pb-32">
+<main class="mx-auto max-w-2xl {sync.isSyncing ? '' : 'snap-y snap-mandatory'} p-4 pb-32">
+	<div id="top-snap" class="h-px snap-start"></div>
 	{#if sync.isSyncing}
 		<div
 			transition:slide={{ duration: 200 }}
@@ -195,8 +211,11 @@
 		filteredCount={filteredItems.length}
 		totalCount={allItems.length}
 		{searchQuery}
-		{feedFilter}
+		{channelFilter}
 		{favFilter}
+		{collectionFilter}
+		channelTitle={data.activeChannelTitle}
+		collectionName={data.activeCollectionName}
 		onClear={scrollToTop}
 	/>
 

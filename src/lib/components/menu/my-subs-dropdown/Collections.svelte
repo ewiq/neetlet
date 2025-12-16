@@ -158,10 +158,10 @@
 		>
 			{#if showNewCollectionInput}
 				<div
-					class="flex items-center gap-2.5 rounded-lg bg-secondary/50 px-3 py-1"
+					class="flex items-center gap-1 rounded-lg bg-secondary/50 py-1 pr-0.5 pl-3"
 					transition:slide={{ duration: collectionJustCreated ? 0 : 150 }}
 				>
-					<Folder size={18} class="shrink-0 text-tertiary" />
+					<Folder size={18} class="shrink-0  text-tertiary" />
 					<input
 						type="text"
 						bind:value={newCollectionName}
@@ -170,7 +170,7 @@
 							if (e.key === 'Escape') cancelAddingCollection();
 						}}
 						placeholder="Collection name..."
-						class="min-w-0 flex-1 bg-transparent text-sm text-content outline-none placeholder:text-tertiary"
+						class="ml-2 min-w-0 flex-1 bg-transparent text-sm text-content outline-none placeholder:text-tertiary"
 					/>
 					<button
 						onclick={addCollection}

@@ -87,14 +87,7 @@
 			const newHideState = !channel.hideOnMainFeed;
 			await updateChannelSettings(channel.link, { hideOnMainFeed: newHideState });
 			await invalidate('app:feed');
-			toastData.message = newHideState
-				? 'Channel hidden from main feed'
-				: 'Channel visible in main feed';
-			toastData.type = 'success';
-		} catch (error) {
-			toastData.message = 'Failed to update channel visibility';
-			toastData.type = 'error';
-		}
+		} catch (error) {}
 	}
 
 	async function handleCopyUrl(event: Event) {
@@ -184,7 +177,7 @@
 			onclick={handleToggleHideFromFeed}
 			class="w-full cursor-pointer px-4 py-2.5 text-right text-accent transition-colors hover:bg-secondary hover:text-content"
 		>
-			{channel.hideOnMainFeed ? 'Show in main feed' : 'Hide from main feed'}
+			{channel.hideOnMainFeed ? 'Show in main feed' : 'Hide in main feed'}
 		</button>
 
 		<button

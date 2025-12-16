@@ -79,7 +79,7 @@
 </script>
 
 <article
-	out:slide={{ duration: feed.isItemClosing ? 150 : 0 }}
+	out:slide={{ duration: feed.isItemClosing || feed.isFavouriteRemoving ? 150 : 0 }}
 	bind:this={feedCardElement}
 	class="flex max-h-[85vh] snap-start flex-col overflow-hidden rounded-xl border border-muted bg-surface shadow-sm transition lg:max-h-[70vh] {menuState.isMenuHidden
 		? 'scroll-mt-2'
