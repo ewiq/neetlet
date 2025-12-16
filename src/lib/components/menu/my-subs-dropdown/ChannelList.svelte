@@ -78,25 +78,14 @@
 		event.stopPropagation();
 
 		const isAlreadyInCollection = channel.collectionIds?.includes(collectionId) ?? false;
-		const action = !isAlreadyInCollection; // If in, remove (false); if not, add (true)
+		const action = !isAlreadyInCollection;
 
 		try {
-			// Using the toggle function from your DB, passing 'true' to add, 'false' to remove
-			// Or relying on logic if your db function handles toggle automatically.
-			// Based on your DB code: toggleChannelCollection(id, colId, boolean)
 			await toggleChannelCollection(channel.link, collectionId, action);
 
-			await invalidate('app:feed'); // Refresh data to update UI
-			toastData.message = action ? 'Added to collection' : 'Removed from collection';
-			toastData.type = 'success';
-
-			// Optional: Close dropdown after selection
-			// openDropdownId = null;
-			// dropdownButton = null;
+			await invalidate('app:feed');
 		} catch (error) {
 			console.error('Failed to update collection', error);
-			toastData.message = 'Failed to update collection';
-			toastData.type = 'error';
 		}
 	}
 
@@ -137,19 +126,19 @@
 	});
 </script>
 
-<div class="flex w-full flex-col">
+<div class="flex w-full flex-col gap-0.5">
 	{#each channels as channel (channel.title)}
-		<div class=" flex items-center" transition:slide={{ duration: 200 }}>
+		<div class="flex items-center" transition:slide={{ duration: 200 }}>
 			<button
 				onclick={() => filterByChannel(channel)}
-				class="m-0.5 flex min-w-0 grow cursor-pointer items-center gap-2 rounded-md py-1 pr-1.5 pl-0.5 text-left text-sm text-accent transition-colors hover:bg-secondary"
+				class="flex min-w-0 grow cursor-pointer items-center gap-2 rounded-lg py-1.5 pr-2 pl-2 text-left text-sm text-accent transition-colors hover:bg-secondary"
 			>
-				<div class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-tertiary">
+				<div class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary">
 					{#if channel.image}
 						<img
 							src={channel.image}
 							alt={channel.title}
-							class="h-full w-full rounded object-cover"
+							class="h-full w-full scale-90 rounded object-cover"
 						/>
 					{:else}
 						<HashIcon size={16} />
@@ -166,7 +155,7 @@
 						bind:this={dropdownButton}
 						onclick={(e) => handleDropdownToggle(channel.link, e, e.currentTarget)}
 						data-ellipsis
-						class="m-0.5 mr-1 flex shrink-0 cursor-pointer items-center justify-center rounded-full p-1 text-accent transition hover:bg-secondary hover:text-tertiary"
+						class="flex shrink-0 cursor-pointer items-center justify-center rounded-lg p-2 text-accent transition hover:bg-secondary hover:text-tertiary"
 						aria-label="Channel options"
 					>
 						<Ellipsis size={20} />
@@ -181,17 +170,17 @@
 								? dropdownButton.getBoundingClientRect().right - 180
 								: 0}px;"
 						>
-							<div class="flex flex-col">
+							<div class="flex flex-col py-1">
 								<button
 									onclick={(e) => e.stopPropagation()}
-									class="w-full cursor-pointer px-4 py-2 text-right text-accent transition-colors hover:bg-secondary hover:text-content"
+									class="w-full cursor-pointer px-4 py-2.5 text-right text-accent transition-colors hover:bg-secondary hover:text-content"
 								>
 									Rename
 								</button>
 
 								<button
 									onclick={handleToggleCollectionMenu}
-									class="flex w-full cursor-pointer items-center justify-end gap-2 px-4 py-2 text-right text-accent transition-colors hover:bg-secondary hover:text-content {showCollectionMenu
+									class="flex w-full cursor-pointer items-center justify-end gap-2 px-4 py-2.5 text-right text-accent transition-colors hover:bg-secondary hover:text-content {showCollectionMenu
 										? 'bg-secondary text-content'
 										: ''}"
 								>
@@ -201,7 +190,7 @@
 								{#if showCollectionMenu}
 									<div class="w-full bg-secondary/30" transition:slide={{ duration: 150 }}>
 										{#if availableCollections.length === 0}
-											<div class="px-4 py-2 text-center text-xs text-tertiary">
+											<div class="px-4 py-3 text-center text-xs text-tertiary">
 												No collections yet
 											</div>
 										{:else}
@@ -209,7 +198,7 @@
 												{@const isSelected = channel.collectionIds?.includes(collection.id)}
 												<button
 													onclick={(e) => handleCollectionClick(channel, collection.id, e)}
-													class="flex w-full cursor-pointer items-center justify-between px-4 py-0.5 text-right text-accent transition-colors hover:bg-secondary hover:text-content"
+													class="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-right text-accent transition-colors hover:bg-secondary hover:text-content"
 												>
 													<span class="w-4 text-primary">
 														{#if isSelected}
@@ -229,28 +218,28 @@
 
 								<button
 									onclick={(e) => e.stopPropagation()}
-									class="w-full cursor-pointer px-4 py-2 text-right text-accent transition-colors hover:bg-secondary hover:text-content"
+									class="w-full cursor-pointer px-4 py-2.5 text-right text-accent transition-colors hover:bg-secondary hover:text-content"
 								>
 									Hide from my feed
 								</button>
 								<button
 									onclick={(e) => handleCopyUrl(channel.feedUrl, e)}
-									class="relative w-full cursor-pointer px-4 py-2 text-right text-accent transition-colors hover:bg-secondary hover:text-content"
+									class="relative w-full cursor-pointer px-4 py-2.5 text-right text-accent transition-colors hover:bg-secondary hover:text-content"
 								>
 									<span class="flex items-center justify-end gap-2">
 										{#if copiedChannelId === channel.feedUrl}
-											<span class=" text-primary">
+											<span class="text-primary">
 												<Copy size={16} />
 											</span>
 										{/if}
-										Cop{copiedChannelId ? 'ied' : 'y'} URL
+										Cop{copiedChannelId === channel.feedUrl ? 'ied' : 'y'} URL
 									</span>
 								</button>
 
 								<button
 									onclick={(e) => handleUnsubscribe(channel.link, e)}
 									disabled={isDeleting}
-									class="w-full cursor-pointer px-4 py-2 text-right text-accent transition-colors hover:bg-secondary hover:text-content disabled:opacity-50"
+									class="w-full cursor-pointer px-4 py-2.5 text-right text-accent transition-colors hover:bg-secondary hover:text-content disabled:cursor-not-allowed disabled:opacity-50"
 								>
 									{isDeleting ? 'Deleting...' : 'Delete'}
 								</button>

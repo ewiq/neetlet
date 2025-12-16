@@ -95,7 +95,7 @@
 				<div
 					bind:this={subsDropdownRef}
 					transition:slide={{ duration: 150 }}
-					class="fixed left-0 z-60 w-screen border-t border-muted bg-surface pt-1 pr-2 pb-2 pl-4 shadow-lg transition-[height] duration-150 md:w-84"
+					class="fixed left-0 z-60 w-screen border-t border-muted bg-surface pl-0 shadow-lg transition-[height] duration-150 md:w-84"
 					style="top: {menuState.isMenuHidden ? '0px' : '60px'};  height: {menuState.isMenuHidden
 						? `${viewportHeight}px`
 						: `${viewportHeight - 60}px`};"

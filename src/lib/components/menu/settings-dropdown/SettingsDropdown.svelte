@@ -12,6 +12,7 @@
 	} from 'lucide-svelte';
 	import ToggleButton from './ToggleButton.svelte';
 	import { settings } from '$lib/stores/settings.svelte';
+
 	let { isDark, isFontSerif, isSnapped } = $props();
 
 	const settingsConfig = $derived([
@@ -24,7 +25,7 @@
 		},
 		{
 			id: 'font',
-			icon: null, // Custom rendering
+			icon: null,
 			label: isFontSerif ? 'Serif' : 'Sans serif',
 			isChecked: isFontSerif,
 			onToggle: () => settings.toggleFont(),
@@ -54,32 +55,35 @@
 	]);
 </script>
 
-<div class="space-y-2">
-	<div class="flex items-center gap-2 text-base font-semibold text-content">
-		<div class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-tertiary">
-			<Settings size={20} class="text-primary" />
-		</div>
+<div class="flex flex-col gap-3">
+	<div
+		class="flex items-center gap-2.5 px-4 py-1 text-sm font-medium tracking-widest text-content uppercase"
+	>
+		<Settings size={18} class="text-primary" />
 		<span>Settings</span>
 	</div>
 
-	{#each settingsConfig as setting (setting.id)}
-		<div
-			class="flex w-full items-center justify-between rounded-lg px-3"
-			class:mt-1={setting.id === 'font'}
-		>
-			<div class="flex items-center gap-2 text-sm text-content">
-				{#if setting.customIcon}
-					<span
-						class="select-none {isFontSerif ? 'font-serif' : 'font-sans'} w-4 text-center text-sm"
-						>A</span
-					>
-				{:else}
-					<setting.icon size={16} />
-				{/if}
-				<span>{setting.label}</span>
+	<div class="flex flex-col">
+		{#each settingsConfig as setting (setting.id)}
+			<div
+				class="flex w-full items-center justify-between rounded-lg py-2.5 pr-2 pl-3 transition hover:bg-secondary/50"
+			>
+				<div class="flex items-center gap-2.5 text-sm text-content">
+					{#if setting.customIcon}
+						<span
+							class="flex h-4 w-4 items-center justify-center select-none {isFontSerif
+								? 'font-serif'
+								: 'font-sans'} text-base"
+						>
+							A
+						</span>
+					{:else}
+						<setting.icon size={16} class="text-content" />
+					{/if}
+					<span>{setting.label}</span>
+				</div>
+				<ToggleButton isChecked={setting.isChecked} onToggle={setting.onToggle} />
 			</div>
-
-			<ToggleButton isChecked={setting.isChecked} onToggle={setting.onToggle}></ToggleButton>
-		</div>
-	{/each}
+		{/each}
+	</div>
 </div>
