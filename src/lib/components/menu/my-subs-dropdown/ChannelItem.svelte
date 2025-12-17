@@ -7,6 +7,7 @@
 	import { slide } from 'svelte/transition';
 	import ChannelDropdown from './ChannelDropdown.svelte';
 	import { clickOutside } from '$lib/utils/clickOutside';
+	import { scrollToView } from '$lib/utils/scrollToView';
 
 	let {
 		channel,
@@ -104,6 +105,7 @@
 				type="text"
 				bind:value={editingTitle}
 				bind:this={editInputElement}
+				use:scrollToView
 				class="-ml-1 h-full min-w-0 grow rounded bg-secondary px-1 text-sm text-content outline-none"
 				onkeydown={(e) => {
 					e.stopPropagation();

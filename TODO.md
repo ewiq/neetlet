@@ -1,8 +1,5 @@
 ### NEXT
 
-- OPTIMIZE +layout.ts to load items only slices
-- Move filtering logic to db.ts when loading data
-
 - Optimize syncing - only when on main feed - and on top of page - no sync when Subs dropdown is s
 - Correct bug where syncing time get registered in local storage upon unsuccesful sync
 - Add isLoadingRemoving to subs listItem deletion (no opacity)

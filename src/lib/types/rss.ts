@@ -76,9 +76,10 @@ export interface DBItem extends NormalizedRSSItem {
 	id: string;
 	channelId: string;
 	savedAt: number;
+	timestamp: number;
 	read: boolean;
 	closed: boolean;
-	favourite: boolean;
+	favourite: 1 | 0;
 	_searchTokens: string;
 }
 
@@ -93,9 +94,10 @@ export interface RSSDatabase extends DBSchema {
 		indexes: {
 			'by-channel': string;
 			'by-date': string;
+			'by-channel-date': [string, number];
+			'by-fav-date': [number, number];
 		};
 	};
-	// New Store
 	collections: {
 		key: string;
 		value: DBCollection;

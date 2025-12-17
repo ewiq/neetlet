@@ -45,10 +45,10 @@
 					<span>favourite{filteredCount === 1 ? '' : 's'}</span>
 				{:else if channelFilter}
 					result{filteredCount === 1 ? '' : 's'} for
-					<span class="font-medium text-content">{channelTitle || 'Unknown Channel'}</span>
+					<span class="font-medium text-content">{channelTitle || channelFilter}</span>
 				{:else if collectionFilter}
 					result{filteredCount === 1 ? '' : 's'} for
-					<span class="font-medium text-content">{collectionName || 'Unknown Collection'}</span>
+					<span class="font-medium text-content">{collectionName || collectionFilter}</span>
 				{/if}
 			</p>
 
@@ -73,9 +73,9 @@
 				{:else if favFilter}
 					No favourites yet.
 				{:else if channelFilter}
-					No results found for "{channelTitle || 'Unknown Channel'}"
+					No results found for "{channelTitle || channelFilter}"
 				{:else if collectionFilter}
-					No results found for "{collectionName || 'Unknown Collection'}"
+					No results found for "{collectionName || collectionFilter}"
 				{/if}
 			</p>
 			<a href="?" onclick={onClear} class="mt-2 cursor-pointer text-primary hover:underline">

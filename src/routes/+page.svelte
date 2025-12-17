@@ -2,60 +2,121 @@
 	import FeedCard from '$lib/components/feed/FeedCard.svelte';
 	import FeedHeader from '$lib/components/feed/FeedHeader.svelte';
 	import Searchbar from '$lib/components/searchbar/Searchbar.svelte';
-	import { LoaderCircle } from 'lucide-svelte';
-	import { searchItem } from '$lib/utils/searchUtils';
-	import { slide } from 'svelte/transition';
+	import { getPaginatedItems, updateItem } from '$lib/db/db';
+	import { afterNavigate, beforeNavigate, goto, invalidate } from '$app/navigation';
 	import type { PageData } from './$types';
-	import { page } from '$app/state';
-	import { afterNavigate, beforeNavigate } from '$app/navigation';
-	import { updateItem } from '$lib/db/db';
+	import type { UIItem } from '$lib/types/rss';
+	import { LoaderCircle } from 'lucide-svelte';
 	import { sync } from '$lib/stores/sync.svelte';
+	import { slide } from 'svelte/transition';
 	import { feed } from '$lib/stores/feed.svelte';
-	import { tick } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
 
-	let allItems = $state(data.items);
-	let itemsPerPage = 10;
-	let visibleCount = $state(itemsPerPage);
+	let items = $state<UIItem[]>([]);
+	let totalCount = $state(0);
+	let currentPage = $state(1);
+	let isLoadingMore = $state(false);
 	let loadTrigger: HTMLElement | undefined = $state();
 
 	let focusedIndex = $state(0);
 	let isKeyboardScrolling = $state(false);
 
-	let channelFilter = $derived(page.url.searchParams.get('channel'));
-	let favFilter = $derived(page.url.searchParams.get('favs'));
-	let collectionFilter = $derived(page.url.searchParams.get('collection'));
 	let searchQuery = $derived(data.searchQuery);
 
-	let filteredItems = $derived.by(() => {
-		let items = allItems;
+	// Enrich items
+	function enrichItems(rawItems: any[]): UIItem[] {
+		const channelMap = new Map(data.channels.map((c) => [c.link, c]));
 
-		if (searchQuery.trim()) {
-			items = allItems.filter((item) => searchItem(item, searchQuery));
-		}
-		if (channelFilter) {
-			items = allItems.filter((item) => item.channelId === channelFilter);
-		}
+		return rawItems.map((item) => {
+			const channel = channelMap.get(item.channelId);
+			return {
+				...item,
+				channelTitle: channel ? channel.customTitle || channel.title : 'Unknown Feed',
+				channelImage: channel ? channel.image : undefined
+			};
+		});
+	}
 
-		if (collectionFilter) {
-			const validChannels = data.channels.filter((c) =>
-				c.collectionIds?.includes(collectionFilter)
-			);
-			const validChannelIds = new Set(validChannels.map((c) => c.link));
-			items = items.filter((item) => validChannelIds.has(item.channelId));
-		}
-
-		if (favFilter) {
-			items = items.filter((item) => item.favourite);
-		}
-		return items;
+	// Reset when URL (filter) changes
+	$effect(() => {
+		items = enrichItems(data.initialItems);
+		totalCount = data.totalCount;
+		currentPage = 1;
+		focusedIndex = 0;
+		scrollToTop();
 	});
 
-	let visibleItems = $derived(filteredItems.slice(0, visibleCount));
+	// Infinite Scroll Loader with "Charging Effect"
+	async function loadMore() {
+		if (isLoadingMore || items.length >= totalCount) return;
+
+		isLoadingMore = true;
+
+		// await new Promise((resolve) => setTimeout(resolve, 150));
+
+		const nextPage = currentPage + 1;
+
+		try {
+			const result = await getPaginatedItems(nextPage, 15, data.filter);
+			const newItems = enrichItems(result.items);
+
+			items = [...items, ...newItems];
+			currentPage = nextPage;
+
+			if (result.total !== totalCount) totalCount = result.total;
+		} catch (e) {
+			console.error('Failed to load more', e);
+		} finally {
+			isLoadingMore = false;
+		}
+	}
+
+	// Intersection Observer for Infinite Scroll
+	$effect(() => {
+		if (!loadTrigger) return;
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0].isIntersecting) {
+					loadMore();
+				}
+			},
+			{ rootMargin: '0px' }
+		);
+
+		observer.observe(loadTrigger);
+		return () => observer.disconnect();
+	});
+
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+		if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+
+		if (e.key === 'j' || e.key === 'ArrowDown') {
+			e.preventDefault();
+			isKeyboardScrolling = true;
+			focusedIndex = Math.min(focusedIndex + 1, items.length - 1);
+		} else if (e.key === 'k' || e.key === 'ArrowUp') {
+			e.preventDefault();
+			isKeyboardScrolling = true;
+			focusedIndex = Math.max(focusedIndex - 1, 0);
+		}
+	}
+
+	function updateFocusedIndexFromScroll(index: number) {
+		if (!isKeyboardScrolling) {
+			focusedIndex = index;
+		}
+	}
 
 	function scrollToTop() {
-		window.scrollTo({ top: 0, behavior: 'smooth' });
+		if (typeof window !== 'undefined') {
+			window.scrollTo({ top: 0, behavior: 'smooth' });
+		}
+	}
+
+	function clearFilters() {
+		goto('/');
 	}
 
 	beforeNavigate(({ type, cancel }) => {
@@ -69,134 +130,55 @@
 		scrollToTop();
 	});
 
-	$effect(() => {
-		allItems = data.items;
-	});
-
-	$effect(() => {
-		visibleCount = itemsPerPage;
-		focusedIndex = 0;
-	});
-
-	$effect(() => {
-		if (focusedIndex >= visibleItems.length && visibleItems.length > 0) {
-			focusedIndex = visibleItems.length - 1;
-		}
-	});
-
-	// Infinite Scroll
-	$effect(() => {
-		if (!loadTrigger) return;
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (entries[0].isIntersecting && visibleItems.length < filteredItems.length) {
-					setTimeout(() => {
-						visibleCount += itemsPerPage;
-					}, 300);
-				}
-			},
-			{ rootMargin: '0px' }
-		);
-		observer.observe(loadTrigger);
-
-		return () => {
-			observer.disconnect();
-		};
-	});
-
 	async function handleCloseItem(itemId: string) {
 		feed.isItemClosing = true;
-		allItems = allItems.filter((item) => item.id !== itemId);
-		try {
-			await updateItem(itemId, { closed: true });
-		} catch (e) {
-			console.error('Failed to close item', e);
-		} finally {
-			feed.isItemClosing = false;
-		}
+		items = items.filter((item) => item.id !== itemId);
+		totalCount--;
+		if (focusedIndex >= items.length) focusedIndex = Math.max(0, items.length - 1);
+		await updateItem(itemId, { closed: true });
+		feed.isItemClosing = false;
 	}
 
 	async function handleAddToFavourites(itemId: string) {
 		feed.isFavouriteRemoving = true;
-		const item = allItems.find((item) => item.id === itemId);
+		const index = items.findIndex((i) => i.id === itemId);
+		if (index > -1) {
+			// Optimistic update
+			const newState = items[index].favourite === 1 ? 0 : 1;
+			items[index].favourite = newState;
 
-		if (!item) {
-			console.error('Item not found');
-			return;
+			// Remove if looking at favourites only
+			if (data.filter.onlyFavourites && !newState) {
+				items = items.filter((i) => i.id !== itemId);
+				totalCount--;
+			}
+			await updateItem(itemId, { favourite: newState });
 		}
-
-		try {
-			const newFavouriteStatus = !item.favourite;
-			await updateItem(itemId, { favourite: newFavouriteStatus });
-
-			allItems = allItems.map((i) =>
-				i.id === itemId ? { ...i, favourite: newFavouriteStatus } : i
-			);
-			await tick();
-		} catch (e) {
-			console.error('Failed to update favourite status', e);
-		} finally {
-			feed.isFavouriteRemoving = false;
-		}
+		feed.isFavouriteRemoving = false;
 	}
 
 	async function markAsRead(itemId: string) {
-		const item = allItems.find((item) => item.id === itemId);
-		if (!item) {
-			console.error('Item not found');
-			return;
-		}
-		// Only mark as read if not already read
-		if (!item.read) {
-			try {
-				await updateItem(itemId, { read: true });
-				allItems = allItems.map((i) => (i.id === itemId ? { ...i, read: true } : i));
-			} catch (e) {
-				console.error('Failed to mark as read', e);
-			}
+		const index = items.findIndex((i) => i.id === itemId);
+		if (index > -1 && !items[index].read) {
+			items[index].read = true;
+			await updateItem(itemId, { read: true });
 		}
 	}
 
 	async function markAsUnread(itemId: string) {
-		const item = allItems.find((item) => item.id === itemId);
-		if (!item) {
-			console.error('Item not found');
-			return;
-		}
-		try {
+		const index = items.findIndex((i) => i.id === itemId);
+		if (index > -1 && items[index].read) {
+			items[index].read = false;
 			await updateItem(itemId, { read: false });
-			allItems = allItems.map((i) => (i.id === itemId ? { ...i, read: false } : i));
-		} catch (e) {
-			console.error('Failed to mark as unread', e);
-		}
-	}
-
-	function handleKeydown(e: KeyboardEvent) {
-		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-		if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
-
-		if (e.key === 'j' || e.key === 'ArrowDown') {
-			e.preventDefault();
-			isKeyboardScrolling = true;
-			focusedIndex = Math.min(focusedIndex + 1, visibleItems.length - 1);
-		} else if (e.key === 'k' || e.key === 'ArrowUp') {
-			e.preventDefault();
-			isKeyboardScrolling = true;
-			focusedIndex = Math.max(focusedIndex - 1, 0);
-		}
-	}
-
-	function updateFocusedIndexFromScroll(index: number) {
-		if (!isKeyboardScrolling) {
-			focusedIndex = index;
 		}
 	}
 </script>
 
-<svelte:window onkeydown={(e) => handleKeydown(e)} />
+<svelte:window onkeydown={handleKeydown} />
 
 <main class="mx-auto max-w-2xl {sync.isSyncing ? '' : 'snap-y snap-mandatory'} p-4 pb-32">
 	<div id="top-snap" class="h-px snap-start"></div>
+
 	{#if sync.isSyncing}
 		<div
 			transition:slide={{ duration: 200 }}
@@ -208,23 +190,23 @@
 	{/if}
 
 	<FeedHeader
-		filteredCount={filteredItems.length}
-		totalCount={allItems.length}
-		{searchQuery}
-		{channelFilter}
-		{favFilter}
-		{collectionFilter}
+		filteredCount={totalCount}
+		{totalCount}
+		searchQuery={data.searchQuery}
+		channelFilter={data.filter.channelId || null}
+		favFilter={data.filter.onlyFavourites ? '1' : null}
+		collectionFilter={data.filter.collectionId || null}
 		channelTitle={data.activeChannelTitle}
 		collectionName={data.activeCollectionName}
-		onClear={scrollToTop}
+		onClear={clearFilters}
 	/>
 
 	<div class="flex flex-col gap-4">
-		{#each visibleItems as item, index (item.id)}
+		{#each items as item, index (item.id)}
 			<FeedCard
 				{item}
-				focused={index === focusedIndex}
 				{index}
+				focused={index === focusedIndex}
 				shouldScroll={isKeyboardScrolling}
 				onVisible={() => updateFocusedIndexFromScroll(index)}
 				onScrollComplete={() => (isKeyboardScrolling = false)}
@@ -236,17 +218,25 @@
 		{/each}
 	</div>
 
-	{#if allItems.length > 0}
-		<div bind:this={loadTrigger} class="flex h-20 items-center justify-center py-8">
-			{#if visibleItems.length < filteredItems.length}
-				<LoaderCircle class="h-6 w-6 animate-spin text-tertiary" />
-			{:else if visibleItems.length > 0}
-				<span class="text-sm text-tertiary">
-					{searchQuery ? '' : "You're all caught up!"}
+	<div
+		bind:this={loadTrigger}
+		class="flex flex-col items-center justify-center p-12 transition-all"
+	>
+		{#if isLoadingMore}
+			<div class="flex flex-col items-center gap-2">
+				<LoaderCircle class="h-8 w-8 animate-spin text-primary" />
+			</div>
+		{:else if items.length >= totalCount && totalCount > 0}
+			<div class="flex flex-col items-center gap-2 opacity-60">
+				<div class="bg-border mb-2 h-px w-12"></div>
+				<span class="text-sm font-medium text-tertiary">
+					{data.searchQuery ? 'End of search results' : "You're all caught up!"}
 				</span>
-			{/if}
-		</div>
-	{/if}
+			</div>
+		{:else}
+			<div class="h-20"></div>
+		{/if}
+	</div>
 </main>
 
-<Searchbar initialValue={searchQuery} />
+<Searchbar initialValue={searchQuery || ''} />
