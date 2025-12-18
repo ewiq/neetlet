@@ -3,7 +3,7 @@
 	import { updateChannelSettings } from '$lib/db/db';
 	import type { DBChannel } from '$lib/types/rss';
 	import { filterByChannel } from '$lib/utils/filterByChannel';
-	import { Ellipsis, HashIcon, ChevronRight } from 'lucide-svelte';
+	import { Ellipsis, HashIcon, ChevronRight, Loader } from 'lucide-svelte';
 	import { slide } from 'svelte/transition';
 	import ChannelDropdown from './ChannelDropdown.svelte';
 	import { clickOutside } from '$lib/utils/clickOutside';
@@ -32,6 +32,7 @@
 	let editInputElement: HTMLInputElement | null = $state(null);
 	let dropdownButtonElement = $state<HTMLButtonElement | null>(null);
 	let editContainerElement = $state<HTMLDivElement | null>(null);
+	let isDeleting = $state(false);
 
 	// Initialize edit state when entering edit mode
 	$effect(() => {
@@ -78,9 +79,16 @@
 			onSetDropdownId(channel.link);
 		}
 	}
+
+	function handleDeletingStateChange(deletingState: boolean) {
+		isDeleting = deletingState;
+	}
 </script>
 
-<div class="flex items-center" transition:slide={{ duration: 200 }}>
+<div
+	class="flex items-center transition-opacity {isDeleting ? 'opacity-50' : ''}"
+	transition:slide={{ duration: 200 }}
+>
 	{#if isEditing}
 		<div
 			bind:this={editContainerElement}
@@ -89,15 +97,20 @@
 				? 'opacity-60'
 				: ''}"
 		>
-			<div class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary">
-				{#if channel.image}
+			<div class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary">
+				{#if channel.image && !isDeleting}
 					<img
 						src={channel.image}
 						alt={channel.title}
 						class="h-full w-full scale-90 rounded object-cover"
 					/>
-				{:else}
+				{:else if !channel.image && !isDeleting}
 					<HashIcon size={16} />
+				{/if}
+				{#if isDeleting}
+					<div class="inset-0 flex items-center justify-center">
+						<Loader size={20} class="animate-spin text-tertiary" />
+					</div>
 				{/if}
 			</div>
 
@@ -130,15 +143,20 @@
 				? 'opacity-60'
 				: ''}"
 		>
-			<div class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary">
-				{#if channel.image}
+			<div class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded text-tertiary">
+				{#if channel.image && !isDeleting}
 					<img
 						src={channel.image}
 						alt={channel.title}
 						class="h-full w-full scale-90 rounded object-cover"
 					/>
-				{:else}
+				{:else if !channel.image && !isDeleting}
 					<HashIcon size={16} />
+				{/if}
+				{#if isDeleting}
+					<div class="flex items-center justify-center rounded bg-surface/50">
+						<Loader size={16} class="animate-spin text-tertiary" />
+					</div>
 				{/if}
 			</div>
 			<span class="block min-w-0 truncate">
@@ -165,6 +183,7 @@
 					{onChannelDeleted}
 					onRenameRequest={handleStartRename}
 					onClose={() => onSetDropdownId(null)}
+					onDeletingStateChange={handleDeletingStateChange}
 				/>
 			{/if}
 		</div>

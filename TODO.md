@@ -1,21 +1,21 @@
 ### NEXT
 
-- Optimize syncing - only when on main feed - and on top of page - no sync when Subs dropdown is s
-- Correct bug where syncing time get registered in local storage upon unsuccesful sync
-- Add isLoadingRemoving to subs listItem deletion (no opacity)
-- Faster syncing - load channel items sequentially to feed?
-- Better UI syncing: display the 'loading' FeedHeader even if no real syncing
-- Better UI syncing: presync in the background and faster refresh when user requests a reload
+- Automatically close dropdown when 'close clicked'
+- Correct api endpoint to add xml url as key, not input url
+
+Correct syncing errors:
+
+- When user is on top, syncing starts but he scrolls down - detect scrolldown and don't invalidate app:feed - but rather stay 'quiet',
 
 ### BUGS
 
-- Keyboard post navigation has buggy behaviour -> Probably because of index number messed up by freshly appearing visibleItems
-- Refresh itemIndex after sync for correct keyboard navigation
 - Handle items with invalid date and no pubDate whatsoever in source xml
 - Navigation correction: ensure scroll: top beforenavigate also works on main feed
+- Correct positioning channel item dropdown
 
 ### LATER
 
+- Enhance pubdate and other cols storage on idb side
 - Shuffle feed (see below)
 - i18n
 - Save subscribed rss channels to a global database - Track popularity

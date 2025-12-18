@@ -73,6 +73,8 @@ export async function saveFeedToDB(feed: NormalizedRSSFeed, sourceUrl: string) {
 		customTitle: existingChannel?.customTitle
 	});
 
+	let hasChanges = false;
+
 	// Save Items
 	const operations = feed.items.map(async (item) => {
 		const itemId = generateItemId(item, channelId);
@@ -81,6 +83,7 @@ export async function saveFeedToDB(feed: NormalizedRSSFeed, sourceUrl: string) {
 		const timestamp = getTimestamp(item.pubDate);
 
 		if (!existingItem) {
+			hasChanges = true;
 			const newItem: DBItem = {
 				...item,
 				id: itemId,
@@ -95,6 +98,7 @@ export async function saveFeedToDB(feed: NormalizedRSSFeed, sourceUrl: string) {
 			return itemStore.put(newItem);
 		} else {
 			// Only update if content changed, but preserve local state (read, fav, etc)
+			// hasChanges = true;
 			const hasContentChanged =
 				existingItem.title !== item.title ||
 				existingItem.description !== item.description ||
@@ -121,6 +125,8 @@ export async function saveFeedToDB(feed: NormalizedRSSFeed, sourceUrl: string) {
 
 	await Promise.all(operations);
 	await tx.done;
+
+	return hasChanges;
 }
 
 // OPTIMIZED LOADING

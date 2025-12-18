@@ -10,6 +10,7 @@
 	import { sync } from '$lib/stores/sync.svelte';
 	import { slide } from 'svelte/transition';
 	import { feed } from '$lib/stores/feed.svelte';
+	import { menuState } from '$lib/stores/menu.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -172,6 +173,14 @@
 			await updateItem(itemId, { read: false });
 		}
 	}
+
+	async function refreshManually() {
+		sync.hasNewData = false;
+		scrollToTop();
+		sync.isSyncing = true;
+		await invalidate('app:feed');
+		sync.isSyncing = false;
+	}
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -186,6 +195,22 @@
 		>
 			<LoaderCircle class="h-10 w-10 animate-spin text-primary" />
 			<span class="font-sm text-tertiary">Checking for fresh news...</span>
+		</div>
+	{/if}
+
+	{#if sync.hasNewData && !sync.isSyncing && !data.searchQuery && !data.filter.channelId && !data.filter.collectionId}
+		<div
+			class="sticky {menuState.isMenuHidden
+				? 'top-2'
+				: 'top-18'} z-20 mb-4 flex justify-center transition-[top] duration-150"
+			transition:slide
+		>
+			<button
+				onclick={refreshManually}
+				class="rounded-full bg-primary px-4 py-2 text-sm text-white shadow-lg hover:brightness-110"
+			>
+				New posts available ↓
+			</button>
 		</div>
 	{/if}
 

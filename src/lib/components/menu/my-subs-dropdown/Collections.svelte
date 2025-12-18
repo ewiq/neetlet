@@ -129,7 +129,7 @@
 		tabindex="0"
 		onclick={onToggle}
 		onkeydown={(e) => e.key === 'Enter' && onToggle()}
-		class="flex w-full cursor-pointer items-center justify-between px-4 py-3 transition hover:bg-secondary/50"
+		class="flex w-full cursor-pointer items-center justify-between bg-surface px-4 py-3 transition hover:bg-secondary/50"
 	>
 		<div class="flex items-center gap-2.5">
 			<FolderOpen size={18} class="text-primary" />

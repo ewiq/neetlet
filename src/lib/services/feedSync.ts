@@ -1,7 +1,7 @@
 import { getAllChannels, saveFeedToDB } from '$lib/db/db';
 import type { RSSFeedResponse } from '$lib/types/rss';
 
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 15;
 
 export async function syncAllFeeds() {
 	console.log('Starting feed sync...');
@@ -16,14 +16,14 @@ export async function syncAllFeeds() {
 		throw new Error('No channel URLs found');
 	}
 
-	let errorCount = 0;
+	let totalErrors = 0;
+	let anyNewItemsSaved = false;
 
 	const batches = [];
 	for (let i = 0; i < urlsToFetch.length; i += BATCH_SIZE) {
 		batches.push(urlsToFetch.slice(i, i + BATCH_SIZE));
 	}
 
-	// Process batches sequentially
 	for (const batch of batches) {
 		try {
 			const response = await fetch('/api/subscribe', {
@@ -34,7 +34,7 @@ export async function syncAllFeeds() {
 
 			if (!response.ok) {
 				console.error('Batch sync failed', response.statusText);
-				errorCount += batch.length;
+				totalErrors += batch.length;
 				continue;
 			}
 
@@ -44,21 +44,25 @@ export async function syncAllFeeds() {
 				if (res.success) {
 					if (res.data && res.sourceUrl) {
 						console.log(`%c${res.data.data.title} : refreshed`, 'color: #10b981');
-						await saveFeedToDB(res.data, res.sourceUrl);
+						const hasChanges = await saveFeedToDB(res.data, res.sourceUrl);
+
+						if (hasChanges) {
+							anyNewItemsSaved = true;
+						}
 					}
 				} else {
 					console.warn(`%cError syncing feed: ${res.error || 'Unknown error'}`, 'color: #ef4444');
-					errorCount++;
+					totalErrors++;
 				}
 			});
 
 			await Promise.all(savePromises);
 		} catch (error) {
 			console.error('Batch network error:', error);
-			errorCount += batch.length;
+			totalErrors += batch.length;
 		}
 	}
 
-	console.log(`Sync complete. Errors: ${errorCount}`);
-	return { success: true, errors: errorCount };
+	console.log(`Sync complete. Errors: ${totalErrors}`);
+	return { success: true, errors: totalErrors, hasChanges: anyNewItemsSaved };
 }

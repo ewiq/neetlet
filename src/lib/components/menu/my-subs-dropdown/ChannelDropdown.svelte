@@ -16,13 +16,15 @@
 		triggerElement,
 		onRenameRequest,
 		onClose,
-		onChannelDeleted
+		onChannelDeleted,
+		onDeletingStateChange
 	}: {
 		channel: DBChannel;
 		triggerElement: HTMLElement | null;
 		onRenameRequest: () => void;
 		onClose: () => void;
 		onChannelDeleted?: () => Promise<void>;
+		onDeletingStateChange?: (isDeleting: boolean) => void;
 	} = $props();
 
 	let isDeleting = $state(false);
@@ -41,6 +43,12 @@
 			const rect = triggerElement.getBoundingClientRect();
 			// Match original logic: bottom + 4, right align (subtract width)
 			style = `top: ${rect.bottom + 4}px; left: ${rect.right - 180}px;`;
+		}
+	});
+
+	$effect(() => {
+		if (onDeletingStateChange) {
+			onDeletingStateChange(isDeleting);
 		}
 	});
 
